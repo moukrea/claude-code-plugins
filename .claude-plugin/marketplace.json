@@ -1,12 +1,12 @@
 {
-  "name": "claude-code-plugins",
+  "name": "moukrea-plugins",
   "owner": {
     "name": "moukrea",
     "email": "contact@moukrea.dev"
   },
   "metadata": {
-    "description": "Security-focused Claude Code plugins",
-    "version": "1.0.0",
+    "description": "Productivity and security plugins for Claude Code",
+    "version": "1.1.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -15,14 +15,24 @@
       "source": "./plugins/opaq",
       "description": "Secure credential manager and execution wrapper. Use secrets in commands without ever seeing them — for humans and AI agents alike.",
       "version": "0.1.0",
-      "author": {
-        "name": "moukrea"
-      },
+      "author": { "name": "moukrea" },
       "homepage": "https://github.com/moukrea/opaq",
       "repository": "https://github.com/moukrea/claude-code-plugins",
       "license": "MIT",
       "keywords": ["security", "credentials", "secrets", "authentication"],
       "category": "security"
+    },
+    {
+      "name": "craft",
+      "source": "./plugins/craft",
+      "description": "Generate autonomous multi-phase implementation prompts from technical specs or project descriptions. Turns specs into PROMPT.md files that orchestrate agent teams through decomposition, planning, and parallel implementation.",
+      "version": "0.1.0",
+      "author": { "name": "moukrea" },
+      "homepage": "https://github.com/moukrea/opaq",
+      "repository": "https://github.com/moukrea/claude-code-plugins",
+      "license": "MIT",
+      "keywords": ["orchestration", "implementation", "agent-teams", "spec", "automation", "prompt-generation"],
+      "category": "productivity"
     }
   ]
 }

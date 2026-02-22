@@ -1,0 +1,19 @@
+{
+  "name": "craft",
+  "version": "0.1.0",
+  "description": "Generate autonomous multi-phase implementation prompts from technical specs or project descriptions. Produces a PROMPT.md that orchestrates agent teams through spec decomposition, task planning, and parallel implementation.",
+  "author": {
+    "name": "moukrea"
+  },
+  "repository": "https://github.com/moukrea/claude-code-plugins",
+  "license": "MIT",
+  "keywords": [
+    "orchestration",
+    "implementation",
+    "agent-teams",
+    "spec",
+    "automation",
+    "prompt-generation"
+  ],
+  "skills": ["./skills/"]
+}
