@@ -1,0 +1,35 @@
+{
+  "PreToolUse": [
+    {
+      "matcher": "Bash",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "${CLAUDE_PLUGIN_ROOT}/scripts/bash-guard.sh",
+          "timeout": 5
+        }
+      ]
+    },
+    {
+      "matcher": "Write|Edit|MultiEdit",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "${CLAUDE_PLUGIN_ROOT}/scripts/file-guard.sh",
+          "timeout": 5
+        }
+      ]
+    }
+  ],
+  "SessionStart": [
+    {
+      "matcher": "startup|compact",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "if command -v opaq >/dev/null 2>&1; then echo 'opaq is available for secure credential access. When a task needs credentials not already in your environment or .env files, use: `opaq search <keyword>` to find secrets, then `opaq run -- <command>` with {{SECRET_NAME}} placeholders. Secrets managed by opaq must never be written to files.'; else echo 'WARNING: opaq is not installed. Credential management via opaq is unavailable. Install it first: https://github.com/moukrea/opaq'; fi"
+        }
+      ]
+    }
+  ]
+}
