@@ -14,5 +14,5 @@ CHANGED_PLUGINS=$(echo "$CHANGED_FILES" | \
 if [ -z "$CHANGED_PLUGINS" ]; then
   echo "[]"
 else
-  echo "$CHANGED_PLUGINS" | jq -R -s 'split("\n") | map(select(length > 0))'
+  echo "$CHANGED_PLUGINS" | jq -R -s -c 'split("\n") | map(select(length > 0))'
 fi
