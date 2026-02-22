@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    if: ${{ !startsWith(github.event.head_commit.message, 'chore(release):') }}
+    runs-on: ubuntu-latest
+    outputs:
+      changed_plugins: ${{ steps.detect.outputs.changed_plugins }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Detect changed plugins
+        id: detect
+        run: |
+          chmod +x .github/scripts/detect-changes.sh
+          RESULT=$(.github/scripts/detect-changes.sh)
+          echo "changed_plugins=$RESULT" >> "$GITHUB_OUTPUT"
+
+  version-bump:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.changed_plugins != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Configure git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Bump versions and create tags
+        shell: bash
+        run: |
+          chmod +x .github/scripts/bump-plugin.sh
+          CHANGED='${{ needs.detect-changes.outputs.changed_plugins }}'
+          COMMIT_MSG="chore(release):"
+          TAGS=()
+
+          for PLUGIN in $(echo "$CHANGED" | jq -r '.[]'); do
+            .github/scripts/bump-plugin.sh "$PLUGIN"
+            NEW_VERSION=$(jq -r '.version' "plugins/$PLUGIN/.claude-plugin/plugin.json")
+            COMMIT_MSG="$COMMIT_MSG bump $PLUGIN to v$NEW_VERSION,"
+            TAGS+=("$PLUGIN-v$NEW_VERSION")
+          done
+
+          # Trim trailing comma
+          COMMIT_MSG="${COMMIT_MSG%,}"
+
+          # Bump marketplace-level metadata.version (patch increment)
+          MARKETPLACE_VERSION=$(jq -r '.metadata.version' .claude-plugin/marketplace.json)
+          IFS='.' read -r M_MAJOR M_MINOR M_PATCH <<< "$MARKETPLACE_VERSION"
+          NEW_MARKETPLACE_VERSION="$M_MAJOR.$M_MINOR.$((M_PATCH + 1))"
+          jq --arg v "$NEW_MARKETPLACE_VERSION" '.metadata.version = $v' \
+            .claude-plugin/marketplace.json > tmp.json && mv tmp.json .claude-plugin/marketplace.json
+
+          # Stage, commit, tag, push
+          git add -A
+          git commit -m "$COMMIT_MSG"
+
+          for TAG in "${TAGS[@]}"; do
+            PLUGIN_NAME="${TAG%-v*}"
+            VERSION="${TAG#*-v}"
+            git tag -a "$TAG" -m "Release $PLUGIN_NAME v$VERSION"
+          done
+
+          git push origin main --tags

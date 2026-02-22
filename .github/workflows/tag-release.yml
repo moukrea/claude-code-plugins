@@ -1,0 +1,63 @@
+name: Tag Release
+
+on:
+  push:
+    tags:
+      - '*-v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract plugin name and version
+        id: extract
+        run: |
+          TAG="${{ github.ref_name }}"
+          PLUGIN_NAME="${TAG%-v*}"
+          VERSION="${TAG#*-v}"
+          echo "plugin_name=$PLUGIN_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog
+        id: changelog
+        shell: bash
+        run: |
+          TAG="${{ steps.extract.outputs.tag }}"
+          PLUGIN_NAME="${{ steps.extract.outputs.plugin_name }}"
+
+          # Find previous tag for this plugin
+          PREV_TAG=$(git tag --list "${PLUGIN_NAME}-v*" --sort=-version:refname | sed -n '2p')
+
+          if [ -n "$PREV_TAG" ]; then
+            CHANGELOG=$(git log --format="- %s (%h)" "$PREV_TAG".."$TAG" -- "plugins/$PLUGIN_NAME/")
+          else
+            CHANGELOG=$(git log --format="- %s (%h)" "$TAG" -- "plugins/$PLUGIN_NAME/")
+          fi
+
+          # Handle empty changelog
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="- No notable changes"
+          fi
+
+          # Write to file to preserve multiline content
+          echo "$CHANGELOG" > /tmp/changelog.md
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.extract.outputs.tag }}"
+          PLUGIN_NAME="${{ steps.extract.outputs.plugin_name }}"
+          VERSION="${{ steps.extract.outputs.version }}"
+
+          gh release create "$TAG" \
+            --title "$PLUGIN_NAME v$VERSION" \
+            --notes-file /tmp/changelog.md
