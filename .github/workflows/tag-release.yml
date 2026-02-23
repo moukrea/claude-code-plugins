@@ -3,7 +3,7 @@ name: Tag Release
 on:
   push:
     tags:
-      - '*-v[0-9]+.[0-9]+.[0-9]+'
+      - '*-[0-9]+.[0-9]+.[0-9]+'
 
 permissions:
   contents: write
@@ -20,8 +20,8 @@ jobs:
         id: extract
         run: |
           TAG="${{ github.ref_name }}"
-          PLUGIN_NAME="${TAG%-v*}"
-          VERSION="${TAG#*-v}"
+          VERSION=$(echo "$TAG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+$')
+          PLUGIN_NAME="${TAG%-${VERSION}}"
           echo "plugin_name=$PLUGIN_NAME" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
@@ -34,12 +34,12 @@ jobs:
           PLUGIN_NAME="${{ steps.extract.outputs.plugin_name }}"
 
           # Find previous tag for this plugin
-          PREV_TAG=$(git tag --list "${PLUGIN_NAME}-v*" --sort=-version:refname | sed -n '2p')
+          PREV_TAG=$(git tag --list "${PLUGIN_NAME}-*" --sort=-version:refname | sed -n '2p')
 
           if [ -n "$PREV_TAG" ]; then
-            CHANGELOG=$(git log --format="- %s (%h)" "$PREV_TAG".."$TAG" -- "plugins/$PLUGIN_NAME/")
+            CHANGELOG=$(git log --format="- %s (%h)" "$PREV_TAG".."$TAG" -- "plugins/$PLUGIN_NAME/" | grep -v 'chore(release):')
           else
-            CHANGELOG=$(git log --format="- %s (%h)" "$TAG" -- "plugins/$PLUGIN_NAME/")
+            CHANGELOG=$(git log --format="- %s (%h)" "$TAG" -- "plugins/$PLUGIN_NAME/" | grep -v 'chore(release):')
           fi
 
           # Handle empty changelog
@@ -59,5 +59,5 @@ jobs:
           VERSION="${{ steps.extract.outputs.version }}"
 
           gh release create "$TAG" \
-            --title "$PLUGIN_NAME v$VERSION" \
+            --title "$PLUGIN_NAME $VERSION" \
             --notes-file /tmp/changelog.md

@@ -56,24 +56,38 @@ craft will generate a spec first, then produce the orchestration prompt.
 
 ## Installation
 
-### From the Claude Code marketplace
+### Remote (recommended)
 
-```bash
-claude plugin install moukrea-plugins/opaq
-claude plugin install moukrea-plugins/craft
+Add the marketplace source (one-time):
+
+```
+/plugin marketplace add moukrea/claude-code-plugins
+```
+
+Install plugins:
+
+```
+/plugin install opaq@moukrea-plugins
+/plugin install craft@moukrea-plugins
 ```
 
 ### From a local clone
 
 ```bash
 git clone https://github.com/moukrea/claude-code-plugins.git
+```
 
-# Register the local directory as a marketplace source
-claude marketplace add ./claude-code-plugins
+Add the local directory as a marketplace source:
 
-# Install plugins
-claude plugin install opaq
-claude plugin install craft
+```
+/plugin marketplace add ./claude-code-plugins
+```
+
+Install plugins:
+
+```
+/plugin install opaq@moukrea-plugins
+/plugin install craft@moukrea-plugins
 ```
 
 ## How Plugins Work

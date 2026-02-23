@@ -28,7 +28,7 @@
       "description": "Generate autonomous multi-phase implementation prompts from technical specs or project descriptions. Turns specs into PROMPT.md files that orchestrate agent teams through decomposition, planning, and parallel implementation.",
       "version": "0.1.0",
       "author": { "name": "moukrea" },
-      "homepage": "https://github.com/moukrea/opaq",
+      "homepage": "https://github.com/moukrea/claude-code-plugins",
       "repository": "https://github.com/moukrea/claude-code-plugins",
       "license": "MIT",
       "keywords": ["orchestration", "implementation", "agent-teams", "spec", "automation", "prompt-generation"],

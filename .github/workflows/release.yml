@@ -59,8 +59,8 @@ jobs:
           for PLUGIN in $(echo "$CHANGED" | jq -r '.[]'); do
             .github/scripts/bump-plugin.sh "$PLUGIN"
             NEW_VERSION=$(jq -r '.version' "plugins/$PLUGIN/.claude-plugin/plugin.json")
-            COMMIT_MSG="$COMMIT_MSG bump $PLUGIN to v$NEW_VERSION,"
-            TAGS+=("$PLUGIN-v$NEW_VERSION")
+            COMMIT_MSG="$COMMIT_MSG bump $PLUGIN to $NEW_VERSION,"
+            TAGS+=("$PLUGIN-$NEW_VERSION")
           done
 
           # Trim trailing comma
@@ -78,9 +78,9 @@ jobs:
           git commit -m "$COMMIT_MSG"
 
           for TAG in "${TAGS[@]}"; do
-            PLUGIN_NAME="${TAG%-v*}"
-            VERSION="${TAG#*-v}"
-            git tag -a "$TAG" -m "Release $PLUGIN_NAME v$VERSION"
+            VERSION=$(echo "$TAG" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+$')
+            PLUGIN_NAME="${TAG%-${VERSION}}"
+            git tag -a "$TAG" -m "Release $PLUGIN_NAME $VERSION"
           done
 
           git push origin main --tags
