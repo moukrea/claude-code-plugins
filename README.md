@@ -30,6 +30,32 @@ The secret value is injected at runtime and scrubbed from all output. Claude nev
 
 Requires the [opaq](https://github.com/moukrea/opaq) binary installed on your system.
 
+### git-pilot — Git Workflow Autopilot
+
+Manages the full git workflow lifecycle automatically — branch creation, commit formatting, push prompts, and merge request creation.
+
+**What it does:**
+
+- Enforces branch naming conventions and prevents direct commits to the default branch
+- Validates commit messages against configurable patterns (conventional commits by default)
+- Prompts to push after every commit and offers merge request creation at session end
+- Provides `/branch`, `/finish`, `/summary`, and `/configure` skills
+
+**In practice:**
+
+```
+You: "Add dark mode support"
+
+Claude: [git-pilot] On default branch 'main'. Prompt the user to create
+        a branch before making changes.
+        → Creates feat/add-dark-mode-support
+        → Works, commits with validated messages
+        → Prompts to push after each commit
+        → Offers to create a PR when done
+```
+
+Configuration via `~/.claude/git-pilot.json` (global) or `.claude/git-pilot.json` (per-project).
+
 ### craft — Autonomous Implementation Prompts
 
 Generates orchestration prompts that coordinate agent teams to implement entire projects from a technical specification.
@@ -69,6 +95,7 @@ Install plugins:
 ```
 /plugin install opaq@moukrea-plugins
 /plugin install craft@moukrea-plugins
+/plugin install git-pilot@moukrea-plugins
 ```
 
 ### From a local clone
@@ -88,6 +115,7 @@ Install plugins:
 ```
 /plugin install opaq@moukrea-plugins
 /plugin install craft@moukrea-plugins
+/plugin install git-pilot@moukrea-plugins
 ```
 
 ## How Plugins Work
@@ -103,13 +131,17 @@ Skills are markdown files that teach Claude when and how to use a tool. They inc
 
 ### Hooks
 
-Hooks intercept Claude's tool calls before execution. The opaq plugin uses hooks to:
+Hooks intercept Claude's tool calls before execution. Examples:
 
-| Hook | Trigger | Action |
-|------|---------|--------|
-| Bash guard | Any Bash command | Blocks store/keychain access, blocks user-only subcommands, auto-wraps `{{SECRET}}` commands |
-| File guard | Write, Edit, MultiEdit | Blocks writing `{{SECRET}}` placeholders to files |
-| Session start | New session | Announces opaq availability |
+| Plugin | Hook | Trigger | Action |
+|--------|------|---------|--------|
+| opaq | Bash guard | Any Bash command | Blocks store/keychain access, auto-wraps `{{SECRET}}` commands |
+| opaq | File guard | Write, Edit, MultiEdit | Blocks writing `{{SECRET}}` placeholders to files |
+| opaq | Session start | New session | Announces opaq availability |
+| git-pilot | Session start | New session | Detects branch state, prompts for branch creation |
+| git-pilot | Pre-commit | `git commit` | Validates commit message format and body policy |
+| git-pilot | Post-bash | `git commit` | Prompts to push unpushed commits |
+| git-pilot | Session stop | Session end | Shows work summary, offers push and MR creation |
 
 ## Plugin Structure
 
