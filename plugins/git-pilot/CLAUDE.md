@@ -21,6 +21,7 @@ When you receive a system message prefixed with `[git-pilot]` from any hook (Ses
 - Keep commit subjects under the configured max length (default: 72).
 - Use imperative mood ("add" not "added").
 - One logical change per commit. When you've completed a coherent unit of work, commit it — don't accumulate unrelated changes.
+- **Body policy**: Check `commit.body.required` in the effective config (defaults, global, local merged). If `false`, commits MUST be subject-line only — do NOT include a body. The only exception is breaking changes: when the subject contains `!:` and `commit.breakingChange.requireBody` is `true`, a body starting with the configured `bodyPrefix` (default: `BREAKING CHANGE: `) is required.
 
 ## Rule 4: Push workflow
 
