@@ -2,7 +2,10 @@
   "git": {
     "defaultBranch": "main",
     "autoInit": true,
-    "protectDefaultBranch": true
+    "protectDefaultBranch": "warn",
+    "autoFetch": true,
+    "fetchRetries": 2,
+    "fetchRetryDelaySec": 3
   },
   "branch": {
     "pattern": "{{type}}/{{description}}",
@@ -13,7 +16,9 @@
     "descriptionSeparator": "-",
     "descriptionCase": "kebab",
     "maxLength": 72,
-    "autoCreate": true
+    "autoCreate": true,
+    "unrelatedWorkDetection": true,
+    "autoStashOnSwitch": true
   },
   "commit": {
     "pattern": "{{type}}({{scope}}): {{description}}",
@@ -53,6 +58,11 @@
     "autoPush": false,
     "pushOnFinish": "ask"
   },
+  "rebase": {
+    "autoRebaseBeforePush": true,
+    "conflictStrategy": "prompt",
+    "allowForcePush": "ask"
+  },
   "mergeRequest": {
     "enabled": true,
     "createOnFinish": "ask",
@@ -62,6 +72,15 @@
     "draft": false,
     "labels": [],
     "assignToSelf": true
+  },
+  "worktree": {
+    "enabled": true,
+    "basePath": "../{{project}}-worktrees",
+    "cleanupOnMerge": true
+  },
+  "agentTeams": {
+    "suppressPromptsForAgents": true,
+    "orchestratorOnly": ["push", "mr"]
   },
   "summary": {
     "includeFileChanges": true,
