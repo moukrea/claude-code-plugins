@@ -577,10 +577,25 @@ if [[ "$SCOPE_REQUIRED" == "true" ]]; then
   fi
 fi
 
-# --- Breaking change handling ---
+# --- Body policy ---
+BODY_REQUIRED=$(echo "$CONFIG" | jq -r '.commit.body.required // false')
 IS_BREAKING=false
 if [[ "$SUBJECT" =~ !: ]]; then
   IS_BREAKING=true
+fi
+
+# Detect if a body is present
+HAS_BODY=false
+if [[ "$COMMIT_MSG" == *$'\n'* ]]; then
+  BODY_TEXT=$(echo "$COMMIT_MSG" | tail -n +2 | sed '/^$/d')
+  if [[ -n "$BODY_TEXT" ]]; then
+    HAS_BODY=true
+  fi
+fi
+
+# Reject body when body.required is false and commit is not a breaking change
+if [[ "$BODY_REQUIRED" == "false" ]] && [[ "$HAS_BODY" == "true" ]] && [[ "$IS_BREAKING" == "false" ]]; then
+  output_block "[git-pilot] Commit body is not allowed (commit.body.required is false). Use subject-line only unless it's a breaking change."
 fi
 
 if [[ "$IS_BREAKING" == true ]]; then
