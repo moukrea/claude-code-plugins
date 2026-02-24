@@ -10,6 +10,8 @@ source "$SCRIPT_DIR/config.sh"
 source "$SCRIPT_DIR/git-utils.sh"
 # shellcheck source=state.sh
 source "$SCRIPT_DIR/state.sh"
+# shellcheck source=agent.sh
+source "$SCRIPT_DIR/agent.sh"
 
 # Read input from stdin
 input=$(cat)
@@ -64,7 +66,62 @@ fi
 messages=()
 
 # ---------------------------------------------------------------------------
+# Agent context: attempt silent rebase, skip summary, exit early
+# ---------------------------------------------------------------------------
+if is_agent_context "$session_id"; then
+  if [[ "$session_had_changes" == "true" ]] && has_remote; then
+    auto_rebase=$(get_config "$config" '.rebase.autoRebaseBeforePush' 'true')
+    if [[ "$auto_rebase" == "true" ]] && [[ -n "$current_branch" ]] && [[ "$current_branch" != "$default_branch" ]]; then
+      # shellcheck source=rebase.sh
+      source "$SCRIPT_DIR/rebase.sh"
+      drift_status=$(get_base_branch_drift "$current_branch" "$default_branch" "$remote_name" || echo "")
+      case "$drift_status" in
+        drifted:*)
+          rebase_result=$(attempt_rebase "${remote_name}/${default_branch}" || true)
+          if [[ "$rebase_result" == "conflict" ]]; then
+            git rebase --abort 2>/dev/null || true
+          fi
+          ;;
+      esac
+    fi
+  fi
+
+  # Worktree cleanup still runs for agents
+  # shellcheck source=worktree.sh
+  source "$SCRIPT_DIR/worktree.sh"
+  registry=$(list_worktrees)
+  active_count=$(echo "$registry" | jq '.worktrees | length')
+  if [[ "$active_count" -gt 0 ]]; then
+    cleanup_on_merge=$(get_config "$config" '.worktree.cleanupOnMerge' 'true')
+    if [[ "$cleanup_on_merge" == "true" ]]; then
+      echo "$registry" | jq -r '.worktrees[] | select(.status == "active") | .path' | \
+      while IFS= read -r wt_path; do
+        if [[ -z "$wt_path" ]]; then continue; fi
+        if [[ -d "$wt_path" ]]; then
+          wt_branch=$(git -C "$wt_path" branch --show-current 2>/dev/null || true)
+          if [[ -n "$wt_branch" ]] && git branch --merged "$default_branch" 2>/dev/null | grep -q "$wt_branch"; then
+            remove_worktree "$wt_path" "false" || true
+          fi
+        else
+          unregister_worktree "$wt_path"
+        fi
+      done
+    fi
+  fi
+
+  # Cleanup session state
+  if [[ -n "$session_id" ]]; then
+    state_file=$(get_state_file "$session_id")
+    cleanup_state "$state_file"
+  fi
+
+  echo '{"continue": true}'
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
 # 1. Work summary (only if changes were made during this session)
+#    Suppressed for agents (handled by early exit above).
 # ---------------------------------------------------------------------------
 if [[ "$session_had_changes" == "true" ]]; then
   # Show only session commits when possible, fall back to full branch diff
@@ -98,6 +155,62 @@ if [[ "$session_had_changes" == "true" ]]; then
     fi
 
     messages+=("$summary")
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 1.5. Base branch drift detection and rebase
+#       Suppressed for agents (handled by early exit above).
+# ---------------------------------------------------------------------------
+if [[ "$session_had_changes" == "true" ]] && has_remote; then
+  auto_rebase=$(get_config "$config" '.rebase.autoRebaseBeforePush' 'true')
+  if [[ "$auto_rebase" == "true" ]] && [[ -n "$current_branch" ]] && [[ "$current_branch" != "$default_branch" ]]; then
+    # shellcheck source=rebase.sh
+    source "$SCRIPT_DIR/rebase.sh"
+    drift_status=$(get_base_branch_drift "$current_branch" "$default_branch" "$remote_name" || echo "")
+    case "$drift_status" in
+      drifted:*)
+        drift_count="${drift_status#drifted:}"
+        messages+=("[git-pilot] Base branch '${default_branch}' has ${drift_count} new commit(s). Rebasing '${current_branch}' onto '${remote_name}/${default_branch}'...")
+        rebase_result=$(attempt_rebase "${remote_name}/${default_branch}" || true)
+        case "$rebase_result" in
+          success)
+            messages+=("[git-pilot] Rebase succeeded cleanly. Ready to push.")
+            ;;
+          conflict)
+            conflict_strategy=$(get_config "$config" '.rebase.conflictStrategy' 'prompt')
+            case "$conflict_strategy" in
+              prompt)
+                conflicts=$(get_conflict_details)
+                conflict_count=$(echo "$conflicts" | jq 'length')
+                conflict_files=$(echo "$conflicts" | jq -r '.[].file' | paste -sd', ')
+                messages+=("[git-pilot] Rebase conflicts in ${conflict_count} file(s): ${conflict_files}. Prompt the user to resolve conflicts, abort rebase, or use merge instead.")
+                ;;
+              abort)
+                git rebase --abort 2>/dev/null || true
+                messages+=("[git-pilot] Rebase aborted due to conflicts. Pushing without rebase.")
+                ;;
+              merge-fallback)
+                git rebase --abort 2>/dev/null || true
+                if git merge "${remote_name}/${default_branch}" --no-edit 2>/dev/null; then
+                  messages+=("[git-pilot] Merge with '${default_branch}' succeeded (rebase had conflicts).")
+                else
+                  fallback_conflicts=$(get_conflict_details)
+                  fallback_conflict_count=$(echo "$fallback_conflicts" | jq 'length')
+                  messages+=("[git-pilot] Both rebase and merge have conflicts in ${fallback_conflict_count} file(s). Prompt the user to resolve.")
+                fi
+                ;;
+            esac
+            ;;
+        esac
+        ;;
+      no-drift)
+        # No action needed
+        ;;
+      no-common-ancestor)
+        messages+=("[git-pilot] Cannot determine common ancestor between '${current_branch}' and '${default_branch}'. Skipping rebase. Push may require manual review.")
+        ;;
+    esac
   fi
 fi
 
@@ -245,6 +358,35 @@ if [[ "$session_had_changes" == "true" ]] && has_remote; then
       fi
     fi
     # If CLI tool is missing, stay silent — user can use /finish or create MR manually
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 3.5. Worktree cleanup — remove merged worktrees, unregister stale entries
+# ---------------------------------------------------------------------------
+# shellcheck source=worktree.sh
+source "$SCRIPT_DIR/worktree.sh"
+registry=$(list_worktrees)
+active_count=$(echo "$registry" | jq '.worktrees | length')
+if [[ "$active_count" -gt 0 ]]; then
+  cleanup_on_merge=$(get_config "$config" '.worktree.cleanupOnMerge' 'true')
+  if [[ "$cleanup_on_merge" == "true" ]]; then
+    echo "$registry" | jq -r '.worktrees[] | select(.status == "active") | .path' | \
+    while IFS= read -r wt_path; do
+      if [[ -z "$wt_path" ]]; then continue; fi
+      if [[ -d "$wt_path" ]]; then
+        wt_branch=$(git -C "$wt_path" branch --show-current 2>/dev/null || true)
+        if [[ -n "$wt_branch" ]] && git branch --merged "$default_branch" 2>/dev/null | grep -q "$wt_branch"; then
+          remove_worktree "$wt_path" "false" || true
+        fi
+      else
+        unregister_worktree "$wt_path"
+      fi
+    done
+  fi
+  remaining=$(list_worktrees | jq '.worktrees | length')
+  if [[ "$remaining" -gt 0 ]]; then
+    messages+=("[git-pilot] ${remaining} active worktree(s) remain. Use /worktree to manage them.")
   fi
 fi
 

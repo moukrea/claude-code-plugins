@@ -8,6 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/config.sh"
 # shellcheck source=./state.sh
 source "$SCRIPT_DIR/state.sh"
+# shellcheck source=./agent.sh
+source "$SCRIPT_DIR/agent.sh"
 
 # Read input from stdin
 input=$(cat)
@@ -50,6 +52,11 @@ updated_state=$(echo "$current_state" | jq \
 
 # Write updated state atomically
 write_state "$state_file" "$updated_state"
+
+# Agent suppression: track changes but suppress commit suggestion
+if is_agent_context "$session_id"; then
+  exit 0
+fi
 
 # Check if threshold is reached
 if [[ "$change_count" -lt "$threshold" ]]; then
