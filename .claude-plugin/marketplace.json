@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Productivity and security plugins for Claude Code",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -15,11 +15,18 @@
       "source": "./plugins/opaq",
       "description": "Secure credential manager and execution wrapper. Use secrets in commands without ever seeing them — for humans and AI agents alike.",
       "version": "0.1.0",
-      "author": { "name": "moukrea" },
+      "author": {
+        "name": "moukrea"
+      },
       "homepage": "https://github.com/moukrea/opaq",
       "repository": "https://github.com/moukrea/claude-code-plugins",
       "license": "MIT",
-      "keywords": ["security", "credentials", "secrets", "authentication"],
+      "keywords": [
+        "security",
+        "credentials",
+        "secrets",
+        "authentication"
+      ],
       "category": "security"
     },
     {
@@ -27,23 +34,42 @@
       "source": "./plugins/craft",
       "description": "Generate autonomous multi-phase implementation prompts from technical specs or project descriptions. Turns specs into PROMPT.md files that orchestrate agent teams through decomposition, planning, and parallel implementation.",
       "version": "0.1.0",
-      "author": { "name": "moukrea" },
+      "author": {
+        "name": "moukrea"
+      },
       "homepage": "https://github.com/moukrea/claude-code-plugins",
       "repository": "https://github.com/moukrea/claude-code-plugins",
       "license": "MIT",
-      "keywords": ["orchestration", "implementation", "agent-teams", "spec", "automation", "prompt-generation"],
+      "keywords": [
+        "orchestration",
+        "implementation",
+        "agent-teams",
+        "spec",
+        "automation",
+        "prompt-generation"
+      ],
       "category": "productivity"
     },
     {
       "name": "git-pilot",
       "source": "./plugins/git-pilot",
       "description": "Automated git workflow management for Claude Code — branch creation, commit formatting, push/MR workflows, and natural language configuration.",
-      "version": "1.0.0",
-      "author": { "name": "moukrea" },
+      "version": "1.1.0",
+      "author": {
+        "name": "moukrea"
+      },
       "homepage": "https://github.com/moukrea/claude-code-plugins",
       "repository": "https://github.com/moukrea/claude-code-plugins",
       "license": "MIT",
-      "keywords": ["git", "workflow", "commits", "branches", "merge-request", "pull-request", "conventional-commits"],
+      "keywords": [
+        "git",
+        "workflow",
+        "commits",
+        "branches",
+        "merge-request",
+        "pull-request",
+        "conventional-commits"
+      ],
       "category": "productivity"
     }
   ]
