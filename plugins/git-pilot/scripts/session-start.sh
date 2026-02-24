@@ -65,9 +65,9 @@ if is_git_repo; then
     branch_types=$(echo "$CONFIG" | jq -r '.branch.types // ["feat","fix","refactor","docs","test","chore","style","perf","build","ci"] | join(", ")')
 
     if has_uncommitted_changes; then
-      messages+=("[git-pilot] You are on '${default_branch}' with uncommitted changes. Ask the user if they want to: (1) stash changes and create a new branch, (2) commit changes first, or (3) continue on the current branch.")
+      messages+=("[git-pilot] On '${default_branch}' with uncommitted changes. Prompt the user: stash and create branch, commit first, or continue on '${default_branch}'.")
     else
-      messages+=("[git-pilot] You are on the default branch '${default_branch}'. Before making changes, create a new branch. Use the naming pattern: ${branch_pattern}. Available types: ${branch_types}. Ask the user what they're working on to determine the branch name, or infer it from their request.")
+      messages+=("[git-pilot] On default branch '${default_branch}'. Prompt the user to create a branch before making changes. Pattern: ${branch_pattern}, types: ${branch_types}.")
     fi
   fi
 fi
@@ -79,7 +79,7 @@ if is_git_repo; then
     skip_remote=$(get_config "$CONFIG" '.remote.skipRemotePrompt' 'false')
 
     if [[ "$prompt_remote" == "true" ]] && [[ "$skip_remote" == "false" ]]; then
-      messages+=("[git-pilot] No git remote is configured. Ask the user if they'd like to add one (e.g., git@github.com:user/repo.git or https://github.com/user/repo.git). If they want to skip, set remoteSkipped in the session so we don't ask again.")
+      messages+=("[git-pilot] No git remote configured. Prompt the user to add one or skip.")
     fi
   fi
 fi

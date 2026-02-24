@@ -49,17 +49,25 @@ init_state() {
   local state_file
   state_file=$(get_state_file "$session_id")
 
+  # Capture HEAD commit at session start for change detection
+  local head_at_start=""
+  if command -v git >/dev/null 2>&1 && git rev-parse HEAD >/dev/null 2>&1; then
+    head_at_start=$(git rev-parse HEAD 2>/dev/null || true)
+  fi
+
   local content
   content=$(jq -n \
     --arg sid "$session_id" \
     --arg start "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --arg wb "$working_branch" \
     --arg pb "$previous_branch" \
+    --arg head "$head_at_start" \
     '{
       sessionId: $sid,
       startTime: $start,
       workingBranch: $wb,
       previousBranch: $pb,
+      headAtStart: $head,
       changeCount: 0,
       lastCommitAt: null,
       modifiedFiles: [],
