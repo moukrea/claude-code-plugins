@@ -21,6 +21,17 @@ Use the reference table below to understand all available config keys:
 | "Stop auto-committing" | `autoCommit.enabled: false` |
 | "Always create draft PRs" | `mergeRequest.draft: true` |
 | "Use underscores in branch names" | `branch.descriptionSeparator: "_", branch.descriptionCase: "snake"` |
+| "Fetch remote on session start" | `git.autoFetch: true` |
+| "Block commits to main" | `git.protectDefaultBranch: "block"` |
+| "Don't warn about main branch commits" | `git.protectDefaultBranch: "off"` |
+| "Disable unrelated work detection" | `branch.unrelatedWorkDetection: false` |
+| "Don't auto-stash on branch switch" | `branch.autoStashOnSwitch: false` |
+| "Don't auto-rebase before push" | `rebase.autoRebaseBeforePush: false` |
+| "Never force push" | `rebase.allowForcePush: "never"` |
+| "Always force push after rebase" | `rebase.allowForcePush: "always"` |
+| "Use merge when rebase conflicts" | `rebase.conflictStrategy: "merge-fallback"` |
+| "Disable worktrees" | `worktree.enabled: false` |
+| "Worktrees in /tmp" | `worktree.basePath: "/tmp/{{project}}-worktrees"` |
 
 ## Step 2: Read Current Config
 

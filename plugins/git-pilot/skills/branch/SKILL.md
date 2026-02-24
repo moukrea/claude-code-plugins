@@ -47,3 +47,9 @@ Create and switch to the new branch:
 ```
 git switch -c <branch-name>
 ```
+
+## Step 5: Record Branch Context
+
+After creating the branch, note the base branch (the branch you were on before switching)
+and the branch purpose (derived from the description). These are used for unrelated work
+detection and drift checks.

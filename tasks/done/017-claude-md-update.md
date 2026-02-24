@@ -1,50 +1,39 @@
-# git-pilot — Git Workflow Autopilot
+# Task 017: CLAUDE.md Update — All 10 Rules and Updated Skill Reference
 
-git-pilot manages the full git workflow lifecycle. You MUST follow these rules throughout every session.
+## Status
+done
 
-## Rule 1: Always act on hook messages
+## Dependencies
+- 004-agent-library (CLAUDE.md Rule 10 references agent teams detection and behavior)
+- 005-rebase-library (CLAUDE.md Rule 9 references conflict resolution from rebase operations)
+- 006-worktree-library (CLAUDE.md Rule 10 references worktree operations for agents)
+- 007-stash-functions (CLAUDE.md Rule 8 references auto-stash on branch switch)
 
-When you receive a system message prefixed with `[git-pilot]` from any hook (SessionStart, PostToolUse, Stop), you MUST act on it using AskUserQuestion BEFORE continuing with other work. Never ignore these messages. Present clear, concise options relevant to the prompt.
+## Spec References
+- spec/07-skills-and-claude-md.md
 
-## Rule 2: Branch discipline
+## Scope
+Replace the existing v1 CLAUDE.md (6 rules, 4 skills in reference table) with the complete v2 version containing all 10 rules and 7 skills in the reference table. The v2 CLAUDE.md adds Rule 7 (unrelated work detection), Rule 8 (branch switching with auto-stash), Rule 9 (conflict resolution guidance), and Rule 10 (agent teams behavior). The skill reference table adds `/stash`, `/worktree`, and `/rebase`.
 
-- Never work directly on the default branch. If you're on the default branch when starting work, follow the `/branch` skill workflow to create a feature branch before making any changes.
-- Name branches using the configured pattern (default: `{{type}}/{{description}}`, kebab-case).
-- Available types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `style`, `perf`, `build`, `ci`.
-- If the user's request clearly implies a branch type and description, you can infer the branch name and propose it. Otherwise, ask.
-- Check `.claude/git-pilot.json` (local) or `~/.claude/git-pilot.json` (global) for project-specific overrides.
+## Acceptance Criteria
+- [x] `plugins/git-pilot/CLAUDE.md` contains exactly 10 numbered rules, each with the exact text from spec section 1.
+- [x] Rule 7 (Unrelated Work Detection) includes all 5 sub-points: branch name parsing, recent commits review, assessment with the exact prompt text, "when NOT to prompt" conditions, and branch switch reference.
+- [x] Rule 8 (Branch switching) includes all 3 steps: auto-stash when `branch.autoStashOnSwitch` is `true`, auto-restore on target branch, conflict warning on restore failure.
+- [x] Rule 9 (Conflict resolution) includes all 4 steps: read conflicting files, provide recommendations (one-side vs both-side vs deleted), present options (resolve manually / accept ours / accept theirs / abort), continue after resolution.
+- [x] Rule 10 (Agent Teams) includes all 4 points: no push/MR/branch-switch prompts, commit rules still active, no auto-commit suggestions, stay in worktree directory.
+- [x] Skill reference table lists all 7 skills: `/branch`, `/finish`, `/summary`, `/configure`, `/stash`, `/worktree`, `/rebase` with correct "When to use" descriptions.
 
-## Rule 3: Commit discipline
+## Implementation Notes
 
-- Follow the configured commit format (default: `{{type}}({{scope}}): {{description}}`).
-- Do NOT include `Co-Authored-By`, `Generated with`, or any AI attribution lines in commits.
-- Keep commit subjects under the configured max length (default: 72).
-- Use imperative mood ("add" not "added").
-- One logical change per commit. When you've completed a coherent unit of work, commit it — don't accumulate unrelated changes.
-- **Body policy**: Check `commit.body.required` in the effective config (defaults, global, local merged). If `false`, commits MUST be subject-line only — do NOT include a body. The only exception is breaking changes: when the subject contains `!:` and `commit.breakingChange.requireBody` is `true`, a body starting with the configured `bodyPrefix` (default: `BREAKING CHANGE: `) is required.
+Replace the entire content of `plugins/git-pilot/CLAUDE.md` with the complete v2 version from spec section 1. The exact content is provided in the spec between the opening and closing markdown code fence.
 
-## Rule 4: Push workflow
+### Rules 1-6
 
-After every successful `git commit`, check for unpushed commits. If there are any and a remote exists:
-- Use AskUserQuestion to prompt the user with two options: **"Push to <remote>/<branch>"** and **"Skip"**.
-- If they choose to push, run: `git push -u <remote> <branch>`.
-- Do NOT silently skip this step or just mention it in passing. The user expects an interactive prompt.
+Rules 1 through 6 are unchanged from v1. They must be preserved exactly. Verify no unintended drift.
 
-## Rule 5: Session end
+### Rule 7: Unrelated Work Detection
 
-When finishing a session, follow the `/finish` skill workflow:
-1. Commit any remaining uncommitted changes.
-2. If unpushed commits exist, prompt to push (same as Rule 4).
-3. If merge request creation is enabled, offer to create one using the appropriate platform CLI (`gh` for GitHub, `glab` for GitLab) or skip silently if the CLI isn't available.
-
-## Rule 6: Configuration
-
-- Users can change git-pilot settings by asking in natural language (via `/configure` skill).
-- Global config: `~/.claude/git-pilot.json`
-- Local config: `.claude/git-pilot.json`
-- Local settings override global settings which override plugin defaults.
-- When changing config, ask whether the change should be global or project-specific.
-
+```markdown
 ## Rule 7: Unrelated work detection
 
 Before starting work on a new user request, assess whether the request is related
@@ -68,7 +57,11 @@ to the current branch's purpose:
    on the default branch, or for branches with no commits yet.
 5. **If the user chooses to create a new branch**: Follow the branch switch
    workflow (see Rule 8).
+```
 
+### Rule 8: Branch switching
+
+```markdown
 ## Rule 8: Branch switching
 
 When switching branches (via /branch, user request, or unrelated work detection):
@@ -78,7 +71,11 @@ When switching branches (via /branch, user request, or unrelated work detection)
 2. After switching, check if there's a git-pilot stash for the target branch and
    restore it automatically.
 3. If stash restoration fails (conflicts), inform the user and suggest manual resolution.
+```
 
+### Rule 9: Conflict resolution
+
+```markdown
 ## Rule 9: Conflict resolution
 
 When a rebase or merge results in conflicts:
@@ -91,7 +88,11 @@ When a rebase or merge results in conflicts:
 3. Present clear options: resolve manually, accept ours, accept theirs, abort.
 4. After the user resolves conflicts, continue the interrupted operation
    (`git rebase --continue` or `git merge --continue`).
+```
 
+### Rule 10: Agent Teams
+
+```markdown
 ## Rule 10: Agent Teams
 
 When operating as a spawned agent (not the orchestrator):
@@ -101,7 +102,11 @@ When operating as a spawned agent (not the orchestrator):
 2. Follow commit rules normally — agents must still use proper commit format.
 3. Do not run auto-commit suggestions. Commit when instructed by the orchestrator.
 4. If instructed to work in a specific worktree directory, stay in that directory.
+```
 
+### Updated Skill Reference Table
+
+```markdown
 ## Skill reference
 
 | Skill | When to use |
@@ -113,3 +118,7 @@ When operating as a spawned agent (not the orchestrator):
 | `/stash` | When the user wants to manage git stashes |
 | `/worktree` | When the user wants to manage git worktrees |
 | `/rebase` | When the user wants to rebase the current branch |
+```
+
+## Files to Create or Modify
+- plugins/git-pilot/CLAUDE.md (modify)

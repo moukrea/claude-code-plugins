@@ -140,6 +140,29 @@ is_branch_creation_command() {
   return 1
 }
 
+# Returns 0 if the command is a branch switch command (not branch creation).
+# Sets SWITCH_TARGET to the target branch name.
+is_branch_switch_command() {
+  local cmd="$1"
+  SWITCH_TARGET=""
+
+  # git checkout <branch> (not -b/-B for new branch creation)
+  if [[ "$cmd" =~ git[[:space:]]+checkout[[:space:]]+([^-][^[:space:]]+) ]] && \
+     ! [[ "$cmd" =~ git[[:space:]]+checkout[[:space:]]+-[bB] ]]; then
+    SWITCH_TARGET="${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  # git switch <branch> (not -c/-C for new branch creation)
+  if [[ "$cmd" =~ git[[:space:]]+switch[[:space:]]+([^-][^[:space:]]+) ]] && \
+     ! [[ "$cmd" =~ git[[:space:]]+switch[[:space:]]+-[cC] ]]; then
+    SWITCH_TARGET="${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  return 1
+}
+
 # --- Commit message parsing ---
 
 # Extracts the commit message from a git commit command.
@@ -466,6 +489,18 @@ fi
 # Load config
 CONFIG=$(load_config "$CWD")
 
+# --- Branch switch detection with auto-stash ---
+SWITCH_TARGET=""
+if is_branch_switch_command "$COMMAND"; then
+  auto_stash_cfg=$(get_config "$CONFIG" '.branch.autoStashOnSwitch' 'true')
+  if [[ "$auto_stash_cfg" == "true" ]] && has_uncommitted_changes; then
+    current_br=$(get_current_branch)
+    if auto_stash "$current_br" "$SESSION_ID"; then
+      output_allow_with_message "[git-pilot] Stashed uncommitted changes on '${current_br}' before switching to '${SWITCH_TARGET}'."
+    fi
+  fi
+fi
+
 # --- Branch creation detection ---
 BRANCH_NAME=""
 BRANCH_WARNING=""
@@ -504,12 +539,20 @@ parse_commit_message "$COMMAND"
 # If no -m flag found, skip validation (editor mode / --amend without -m)
 if [[ "$HAS_MESSAGE" != true ]]; then
   # Still check branch protection
-  PROTECT_DEFAULT=$(echo "$CONFIG" | jq -r '.git.protectDefaultBranch // true')
-  if [[ "$PROTECT_DEFAULT" == "true" ]]; then
-    if is_on_default_branch "$CONFIG" 2>/dev/null; then
-      DEFAULT_BR=$(get_default_branch "$CONFIG")
-      output_allow_with_message "[git-pilot] Warning: You are committing directly to '${DEFAULT_BR}'. Consider creating a feature branch first."
-    fi
+  protect_mode=$(get_config "$CONFIG" '.git.protectDefaultBranch' 'warn')
+  protect_mode=$(normalize_protect_default_branch "$protect_mode")
+  if is_on_default_branch "$CONFIG" 2>/dev/null; then
+    default_br=$(get_default_branch "$CONFIG")
+    case "$protect_mode" in
+      warn)
+        output_allow_with_message "[git-pilot] Warning: You are committing directly to '${default_br}'. Consider creating a feature branch first."
+        ;;
+      block)
+        output_block "[git-pilot] Commits to '${default_br}' are blocked by policy (git.protectDefaultBranch: block). Create a feature branch first using /branch."
+        ;;
+      off)
+        ;;
+    esac
   fi
   output_allow
 fi
@@ -521,12 +564,20 @@ SUBJECT=$(echo "$COMMIT_MSG" | head -n 1)
 WIP_PREFIX=$(echo "$CONFIG" | jq -r '.autoCommit.wipPrefix // "wip: "')
 if [[ "$SUBJECT" == "$WIP_PREFIX"* ]]; then
   # Check branch protection even for WIP commits
-  PROTECT_DEFAULT=$(echo "$CONFIG" | jq -r '.git.protectDefaultBranch // true')
-  if [[ "$PROTECT_DEFAULT" == "true" ]]; then
-    if is_on_default_branch "$CONFIG" 2>/dev/null; then
-      DEFAULT_BR=$(get_default_branch "$CONFIG")
-      output_allow_with_message "[git-pilot] Warning: You are committing directly to '${DEFAULT_BR}'. Consider creating a feature branch first."
-    fi
+  protect_mode=$(get_config "$CONFIG" '.git.protectDefaultBranch' 'warn')
+  protect_mode=$(normalize_protect_default_branch "$protect_mode")
+  if is_on_default_branch "$CONFIG" 2>/dev/null; then
+    default_br=$(get_default_branch "$CONFIG")
+    case "$protect_mode" in
+      warn)
+        output_allow_with_message "[git-pilot] Warning: You are committing directly to '${default_br}'. Consider creating a feature branch first."
+        ;;
+      block)
+        output_block "[git-pilot] Commits to '${default_br}' are blocked by policy (git.protectDefaultBranch: block). Create a feature branch first using /branch."
+        ;;
+      off)
+        ;;
+    esac
   fi
   output_allow
 fi
@@ -624,12 +675,20 @@ STRIPPED_MSG=""
 SYSTEM_MSG=""
 
 # Check branch protection
-PROTECT_DEFAULT=$(echo "$CONFIG" | jq -r '.git.protectDefaultBranch // true')
-if [[ "$PROTECT_DEFAULT" == "true" ]]; then
-  if is_on_default_branch "$CONFIG" 2>/dev/null; then
-    DEFAULT_BR=$(get_default_branch "$CONFIG")
-    SYSTEM_MSG="[git-pilot] Warning: You are committing directly to '${DEFAULT_BR}'. Consider creating a feature branch first."
-  fi
+protect_mode=$(get_config "$CONFIG" '.git.protectDefaultBranch' 'warn')
+protect_mode=$(normalize_protect_default_branch "$protect_mode")
+if is_on_default_branch "$CONFIG" 2>/dev/null; then
+  default_br=$(get_default_branch "$CONFIG")
+  case "$protect_mode" in
+    warn)
+      SYSTEM_MSG="[git-pilot] Warning: You are committing directly to '${default_br}'. Consider creating a feature branch first."
+      ;;
+    block)
+      output_block "[git-pilot] Commits to '${default_br}' are blocked by policy (git.protectDefaultBranch: block). Create a feature branch first using /branch."
+      ;;
+    off)
+      ;;
+  esac
 fi
 
 if strip_signatures "$CONFIG" "$COMMIT_MSG"; then

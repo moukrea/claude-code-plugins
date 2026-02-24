@@ -30,3 +30,13 @@ get_config() {
   local default="$3"
   echo "$config" | jq -r "if ($key) == null then \"$default\" else ($key) end"
 }
+
+normalize_protect_default_branch() {
+  local value="$1"
+  case "$value" in
+    true)  echo "warn" ;;
+    false) echo "off" ;;
+    warn|block|off) echo "$value" ;;
+    *) echo "warn" ;;
+  esac
+}

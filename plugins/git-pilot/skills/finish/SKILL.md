@@ -11,6 +11,20 @@ Perform the following sequence to finish the current work session.
 
 Run `git status --porcelain`. If there are any uncommitted changes, commit them following the configured commit format.
 
+## Step 1.5: Check Base Branch Drift
+
+Before pushing, check if the base branch has advanced:
+
+1. Run `git fetch <remote> <defaultBranch>`.
+2. Check for new commits on the base branch since this branch diverged.
+3. If the base has new commits and `rebase.autoRebaseBeforePush` is `true`:
+   - Attempt `git rebase <remote>/<defaultBranch>`.
+   - If rebase succeeds: continue to push.
+   - If rebase has conflicts: present conflict details and options to the user.
+4. If force push is needed after rebase, follow `rebase.allowForcePush` policy.
+
+Base branch is determined in order: (1) session state `baseBranch` field, (2) `git config branch.${current}.merge` with `refs/heads/` stripped, (3) `git.defaultBranch` from config.
+
 ## Step 2: Push to Remote
 
 Follow the push workflow:
