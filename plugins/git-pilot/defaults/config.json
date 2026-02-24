@@ -1,0 +1,72 @@
+{
+  "git": {
+    "defaultBranch": "main",
+    "autoInit": true,
+    "protectDefaultBranch": true
+  },
+  "branch": {
+    "pattern": "{{type}}/{{description}}",
+    "types": [
+      "feat", "fix", "refactor", "docs", "test",
+      "chore", "style", "perf", "build", "ci"
+    ],
+    "descriptionSeparator": "-",
+    "descriptionCase": "kebab",
+    "maxLength": 72,
+    "autoCreate": true
+  },
+  "commit": {
+    "pattern": "{{type}}({{scope}}): {{description}}",
+    "types": [
+      "feat", "fix", "docs", "style", "refactor", "perf",
+      "test", "build", "ci", "chore", "revert"
+    ],
+    "maxSubjectLength": 72,
+    "scopeRequired": false,
+    "body": {
+      "required": false,
+      "wrap": 72,
+      "includeChangedFiles": false
+    },
+    "signature": {
+      "stripCoAuthoredBy": true,
+      "stripAiAttribution": true,
+      "stripSignedOffBy": false
+    },
+    "breakingChange": {
+      "appendExclamation": true,
+      "requireBody": true,
+      "bodyPrefix": "BREAKING CHANGE: "
+    }
+  },
+  "autoCommit": {
+    "enabled": true,
+    "mode": "suggest",
+    "threshold": 3,
+    "includeWip": false,
+    "wipPrefix": "wip: "
+  },
+  "remote": {
+    "promptForRemote": true,
+    "skipRemotePrompt": false,
+    "defaultName": "origin",
+    "autoPush": false,
+    "pushOnFinish": "ask"
+  },
+  "mergeRequest": {
+    "enabled": true,
+    "createOnFinish": "ask",
+    "platform": "auto",
+    "titleFromBranch": true,
+    "bodyTemplate": null,
+    "draft": false,
+    "labels": [],
+    "assignToSelf": true
+  },
+  "summary": {
+    "includeFileChanges": true,
+    "includeDiff": false,
+    "includeCommitLog": true,
+    "format": "markdown"
+  }
+}

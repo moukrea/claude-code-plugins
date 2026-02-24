@@ -1,0 +1,15 @@
+{
+  "name": "git-pilot",
+  "version": "1.0.0",
+  "description": "Automated git workflow management for Claude Code — branch creation, commit formatting, push/MR workflows, and natural language configuration",
+  "author": {
+    "name": "git-pilot contributors"
+  },
+  "license": "MIT",
+  "keywords": [
+    "git", "workflow", "commits", "branches",
+    "merge-request", "pull-request", "conventional-commits"
+  ],
+  "hooks": "./hooks/hooks.json",
+  "skills": "./skills/"
+}

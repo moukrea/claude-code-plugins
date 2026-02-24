@@ -1,0 +1,50 @@
+---
+name: finish
+description: Finish work - commit remaining changes, push, and optionally create a merge request
+---
+
+# /finish
+
+Perform the following sequence to finish the current work session.
+
+## Step 1: Check for Uncommitted Changes
+
+Run `git status --porcelain`. If there are any uncommitted changes, commit them following the configured commit format.
+
+## Step 2: Push to Remote
+
+Follow the push workflow:
+
+1. Check if a remote exists.
+2. Check for unpushed commits: run `git log @{u}..HEAD --oneline 2>/dev/null`.
+3. Based on `remote.pushOnFinish` (or `remote.autoPush`):
+   - If `true`, push automatically.
+   - If `false` or not set, ask the user whether they want to push.
+4. Push using: `git push -u <remote.defaultName> <branch>`
+
+## Step 3: Create MR/PR
+
+Follow the merge request creation workflow:
+
+1. Check `mergeRequest.enabled` and `mergeRequest.createOnFinish`. If both are not `true`, skip this step.
+2. Detect the platform:
+   - If `mergeRequest.platform` is `"auto"`, inspect the remote URL for `github.com` or `gitlab` to determine the platform.
+   - Verify the required CLI tool is available (`gh` for GitHub, `glab` for GitLab).
+3. Build the title:
+   - If `mergeRequest.titleFromBranch` is `true`, derive the title from the branch name.
+   - Otherwise, use the last commit subject.
+4. Build the body:
+   - If `mergeRequest.bodyTemplate` is set, use it.
+   - Otherwise, generate a default body with Summary, Commits, and Files Changed sections.
+5. Apply configured flags:
+   - `--draft` if `mergeRequest.draft` is `true`
+   - `--label` for each label in `mergeRequest.labels`
+   - `--assignee @me` if `mergeRequest.assignToSelf` is `true`
+   - `--base <defaultBranch>` using `git.defaultBranch`
+6. Create the MR/PR:
+   - For GitHub: `gh pr create --title "..." --body "..." [flags]`
+   - For GitLab: `glab mr create --title "..." --description "..." [flags]`
+
+## Step 4: Show Summary
+
+Optionally generate and display a work summary using the same logic as the `/summary` skill.

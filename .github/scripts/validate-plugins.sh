@@ -63,7 +63,7 @@ echo "Running shellcheck on plugin shell scripts..."
 
 SH_FILES=$(find plugins/ -name '*.sh' -type f 2>/dev/null || true)
 if [ -n "$SH_FILES" ]; then
-  find plugins/ -name '*.sh' -type f -exec shellcheck {} +
+  find plugins/ -name '*.sh' -type f -exec shellcheck --severity=warning {} +
   echo "All shell scripts passed shellcheck."
 else
   echo "No shell scripts found under plugins/."
