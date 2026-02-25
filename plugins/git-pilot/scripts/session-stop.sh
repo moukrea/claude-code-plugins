@@ -127,18 +127,14 @@ if [[ "$session_had_changes" == "true" ]]; then
   # Show only session commits when possible, fall back to full branch diff
   if [[ -n "$head_at_start" ]]; then
     commit_log=$(git log "${head_at_start}..HEAD" --oneline --no-decorate 2>/dev/null || true)
-    diffstat=$(git diff --stat "${head_at_start}...HEAD" 2>/dev/null || true)
+    files_changed_count=$(git diff --stat "${head_at_start}...HEAD" 2>/dev/null | tail -1 | grep -oP '^\s*\K\d+(?= files? changed)' || echo "0")
   else
     commit_log=$(git log "${default_branch}..${current_branch}" --oneline --no-decorate 2>/dev/null || true)
-    diffstat=$(git diff --stat "${default_branch}...HEAD" 2>/dev/null || true)
+    files_changed_count=$(git diff --stat "${default_branch}...HEAD" 2>/dev/null | tail -1 | grep -oP '^\s*\K\d+(?= files? changed)' || echo "0")
   fi
 
   if [[ -n "$commit_log" ]]; then
     commit_count=$(echo "$commit_log" | wc -l | tr -d ' ')
-    files_changed_count=0
-    if [[ -n "$diffstat" ]]; then
-      files_changed_count=$(echo "$diffstat" | head -n -1 | wc -l | tr -d ' ')
-    fi
 
     commit_list=""
     while IFS= read -r line; do
@@ -149,10 +145,7 @@ if [[ "$session_had_changes" == "true" ]]; then
     summary="[git-pilot] Session Summary: ${current_branch}"
     summary+=$'\n\n'"Commits (${commit_count}):"
     summary+=$'\n'"${commit_list}"
-    summary+=$'\n\n'"Files Changed (${files_changed_count}):"
-    if [[ -n "$diffstat" ]]; then
-      summary+=$'\n'"${diffstat}"
-    fi
+    summary+=$'\n'"Files changed: ${files_changed_count}"
 
     messages+=("$summary")
   fi
