@@ -1,3 +1,5 @@
+> **Note:** The `git-pilot-workflow` skill contains the definitive behavioral contract for git-pilot. This CLAUDE.md file serves as reinforcement. If both are loaded, the skill takes precedence.
+
 # git-pilot — Git Workflow Autopilot
 
 git-pilot manages the full git workflow lifecycle. You MUST follow these rules throughout every session.

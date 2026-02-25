@@ -1,6 +1,7 @@
 ---
 name: finish
-description: Finish work - commit remaining changes, push, and optionally create a merge request
+user-invocable: true
+description: "USE THIS SKILL WHEN the user signals that the current unit of work is over. Commits remaining changes, pushes to remote, and optionally creates a merge request to wrap up the session. Trigger on: user says 'done', 'finished', 'that's it', 'ship it', 'wrap it up', 'we're good', 'let's call it', 'I'm done', 'push it', end of session, task completion, or any indication that work is complete. Even if the user only hints at being done or says something casual like 'looks good', still use this skill to ensure nothing is left uncommitted or unpushed."
 ---
 
 # /finish

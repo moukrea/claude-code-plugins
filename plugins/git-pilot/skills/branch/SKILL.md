@@ -1,6 +1,7 @@
 ---
 name: branch
-description: Create a new branch using the configured naming pattern
+user-invocable: true
+description: "USE THIS SKILL WHEN you are about to start making code changes and you are on the default branch, when the user describes a new feature or fix, or when starting any implementation work. Creates a new branch using the configured naming pattern so work never happens directly on the default branch. Trigger on: user requests a feature, bug fix, refactor, or any code change; user says 'let's work on X'; you detect you are on main/master/default branch before writing code; the git-pilot-workflow skill directs you to branch. Even if the user doesn't explicitly ask for a branch, still use this skill before making changes on the default branch."
 ---
 
 # /branch

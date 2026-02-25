@@ -1,6 +1,7 @@
 ---
 name: summary
-description: Show a summary of work done on the current branch
+user-invocable: true
+description: "USE THIS SKILL WHEN the user asks for a recap of work done, wants to know what changed, or needs a progress report. Shows a summary of commits and file changes on the current branch. Trigger on: user says 'what did we do', 'what changed', 'summarize', 'recap', 'show me what we did', 'progress report', 'status update', session ending where a summary would be useful, or any request to review the work performed on this branch. Even if the user only vaguely asks about recent changes or progress, still use this skill to provide a clear overview."
 ---
 
 # /summary

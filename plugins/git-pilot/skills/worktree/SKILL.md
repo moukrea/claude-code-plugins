@@ -1,6 +1,7 @@
 ---
 name: worktree
-description: Manage git worktrees for parallel branch work
+description: "USE THIS SKILL WHEN the user needs to work on multiple branches simultaneously, wants parallel development across features, or needs isolation between tasks without stashing. Manages git worktrees for creating, listing, removing, and merging parallel branch checkouts. Trigger on 'work on two things at once,' 'parallel branches,' 'separate checkout,' 'isolate this work,' 'worktree,' 'don't want to stash,' or any request for concurrent branch work. Even if the user just wants to quickly check another branch without losing context, still use this skill."
+user-invocable: true
 ---
 
 # /worktree

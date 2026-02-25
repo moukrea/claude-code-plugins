@@ -1,6 +1,7 @@
 ---
 name: rebase
-description: Rebase current branch onto another branch
+description: "USE THIS SKILL WHEN the user mentions rebasing, the current branch is behind the base branch, before pushing on long-lived feature branches, or when merge conflicts from diverged history need resolution. Rebases the current branch onto a target branch with conflict handling and force-push management. Trigger on 'rebase,' 'update my branch,' 'catch up with main,' 'branch is behind,' 'linearize history,' 'clean up commits before push,' or any signal that the branch needs to incorporate upstream changes. Even if the user just says 'sync with main' or 'get latest changes,' still use this skill."
+user-invocable: true
 ---
 
 # /rebase

@@ -1,6 +1,7 @@
 ---
 name: stash
-description: Manage git stashes - save, list, apply, or drop
+description: "USE THIS SKILL WHEN the user wants to set aside current work, switch context temporarily, save progress without committing, or needs to switch branches with uncommitted changes. Manages git stashes including save, list, apply, pop, and drop operations. Trigger on 'stash my changes,' 'save this for later,' 'set aside,' 'park this work,' 'switch branches' with dirty working tree, 'come back to this later,' or any need to temporarily shelve uncommitted changes. Even if the user just says 'hold on to this' or 'I need to context-switch,' still use this skill."
+user-invocable: true
 ---
 
 # /stash
