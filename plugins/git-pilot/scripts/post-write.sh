@@ -73,10 +73,10 @@ write_state "$state_file" "$reset_state"
 # Act based on mode
 case "$mode" in
   suggest)
-    message="[git-pilot] You've made ${threshold} file changes since the last commit. Consider committing your progress for easier rollback. Modified files: ${modified_files}"
+    message="[git-pilot] You have made ${threshold} file changes since the last commit (${modified_files}). You MUST commit your progress now for easier rollback. Use AskUserQuestion to confirm with the user, then commit with a descriptive message following the configured commit format."
     ;;
   auto)
-    message="[git-pilot] Auto-commit threshold reached. Commit your current changes now with a descriptive message following the commit format: ${commit_pattern}"
+    message="[git-pilot] Auto-commit threshold reached (${threshold} file changes). You MUST commit your current changes NOW with a descriptive message following the commit format: ${commit_pattern}. Do not continue writing code until this commit is made."
     ;;
   silent)
     commit_msg="${wip_prefix}checkpoint after ${threshold} file changes"
@@ -90,7 +90,7 @@ case "$mode" in
     ;;
   *)
     # Unknown mode, fall back to suggest
-    message="[git-pilot] You've made ${threshold} file changes since the last commit. Consider committing your progress for easier rollback. Modified files: ${modified_files}"
+    message="[git-pilot] You have made ${threshold} file changes since the last commit (${modified_files}). You MUST commit your progress now for easier rollback. Use AskUserQuestion to confirm with the user, then commit with a descriptive message following the configured commit format."
     ;;
 esac
 

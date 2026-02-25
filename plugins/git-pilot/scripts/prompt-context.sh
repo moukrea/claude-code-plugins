@@ -38,5 +38,5 @@ if [[ "$commit_count" == "0" ]]; then echo '{"continue": true}'; exit 0; fi
 
 branch_purpose=$(derive_branch_purpose "$current_branch")
 recent_commits=$(git log "${default_branch}..${current_branch}" --oneline --no-decorate -5 2>/dev/null || true)
-message="[git-pilot] Branch context: '${current_branch}' (${branch_purpose}). ${commit_count} commit(s). Recent: ${recent_commits}"
+message="[git-pilot] You are on branch '${current_branch}' (purpose: ${branch_purpose}, ${commit_count} commit(s)). Before acting on the user's next request, assess whether the request is related to this branch's purpose. If unrelated, STOP and use AskUserQuestion to suggest creating a new branch. Recent commits: ${recent_commits}"
 jq -n --arg msg "$message" '{"continue": true, "systemMessage": $msg}'

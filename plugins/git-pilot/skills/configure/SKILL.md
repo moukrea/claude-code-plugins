@@ -1,6 +1,7 @@
 ---
 name: configure
-description: Configure git-pilot settings using natural language
+description: "USE THIS SKILL WHEN the user wants to change any git-pilot behavior, mentions commit format preferences, branch naming conventions, or push/merge request settings. Configures git-pilot settings through natural language. Trigger on phrases like 'stop asking me about X,' 'always do Y,' 'change the commit format,' 'use underscores in branch names,' 'auto-push after commit,' 'disable auto-commit,' or any request to customize git workflow behavior. Even if the user only vaguely mentions wanting something to work differently, still use this skill."
+user-invocable: true
 ---
 
 # /configure

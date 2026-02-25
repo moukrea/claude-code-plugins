@@ -171,7 +171,7 @@ if [[ "$session_had_changes" == "true" ]] && has_remote; then
     case "$drift_status" in
       drifted:*)
         drift_count="${drift_status#drifted:}"
-        messages+=("[git-pilot] Base branch '${default_branch}' has ${drift_count} new commit(s). Rebasing '${current_branch}' onto '${remote_name}/${default_branch}'...")
+        messages+=("[git-pilot] Base branch '${default_branch}' has ${drift_count} new commit(s) since you branched. Rebasing '${current_branch}' onto '${remote_name}/${default_branch}' now. If conflicts arise, you MUST use AskUserQuestion to present resolution options before proceeding.")
         rebase_result=$(attempt_rebase "${remote_name}/${default_branch}" || true)
         case "$rebase_result" in
           success)
@@ -184,7 +184,7 @@ if [[ "$session_had_changes" == "true" ]] && has_remote; then
                 conflicts=$(get_conflict_details)
                 conflict_count=$(echo "$conflicts" | jq 'length')
                 conflict_files=$(echo "$conflicts" | jq -r '.[].file' | paste -sd', ')
-                messages+=("[git-pilot] Rebase conflicts in ${conflict_count} file(s): ${conflict_files}. Prompt the user to resolve conflicts, abort rebase, or use merge instead.")
+                messages+=("[git-pilot] Rebase conflicts in ${conflict_count} file(s): ${conflict_files}. STOP and use AskUserQuestion NOW to ask the user to choose: (1) resolve conflicts manually, (2) abort rebase, or (3) fall back to merge. Do not proceed until the user responds.")
                 ;;
               abort)
                 git rebase --abort 2>/dev/null || true
@@ -197,7 +197,7 @@ if [[ "$session_had_changes" == "true" ]] && has_remote; then
                 else
                   fallback_conflicts=$(get_conflict_details)
                   fallback_conflict_count=$(echo "$fallback_conflicts" | jq 'length')
-                  messages+=("[git-pilot] Both rebase and merge have conflicts in ${fallback_conflict_count} file(s). Prompt the user to resolve.")
+                  messages+=("[git-pilot] Both rebase and merge have conflicts in ${fallback_conflict_count} file(s). STOP and use AskUserQuestion NOW to present the conflict details and ask the user how to proceed. Do not push or continue until conflicts are resolved.")
                 fi
                 ;;
             esac
@@ -208,7 +208,7 @@ if [[ "$session_had_changes" == "true" ]] && has_remote; then
         # No action needed
         ;;
       no-common-ancestor)
-        messages+=("[git-pilot] Cannot determine common ancestor between '${current_branch}' and '${default_branch}'. Skipping rebase. Push may require manual review.")
+        messages+=("[git-pilot] Cannot determine common ancestor between '${current_branch}' and '${default_branch}'. Skipping rebase. Before pushing, use AskUserQuestion to warn the user that the push may require manual review.")
         ;;
     esac
   fi
@@ -235,7 +235,7 @@ if [[ "$session_had_changes" == "true" ]] && has_remote; then
 
     case "$push_on_finish" in
       always)
-        messages+=("[git-pilot] Pushing ${unpushed_count} commit(s) to '${remote_name}/${current_branch}'. Run: git push -u ${remote_name} ${current_branch}")
+        messages+=("[git-pilot] You MUST push ${unpushed_count} commit(s) to '${remote_name}/${current_branch}' now. Run: git push -u ${remote_name} ${current_branch}. Execute this command immediately.")
         ;;
       *)
         # "ask" and "never" are silent in the stop hook.
@@ -354,7 +354,7 @@ if [[ "$session_had_changes" == "true" ]] && has_remote; then
       fi
 
       if [[ -n "$mr_cmd" ]]; then
-        messages+=("[git-pilot] Creating merge/pull request. Run: ${mr_cmd}")
+        messages+=("[git-pilot] You MUST create a merge/pull request now. Run: ${mr_cmd}. Execute this command immediately.")
       fi
     fi
     # If CLI tool is missing, stay silent — user can use /finish or create MR manually
@@ -386,7 +386,7 @@ if [[ "$active_count" -gt 0 ]]; then
   fi
   remaining=$(list_worktrees | jq '.worktrees | length')
   if [[ "$remaining" -gt 0 ]]; then
-    messages+=("[git-pilot] ${remaining} active worktree(s) remain. Use /worktree to manage them.")
+    messages+=("[git-pilot] ${remaining} active worktree(s) remain after session cleanup. Before ending, use AskUserQuestion to ask the user whether to clean up remaining worktrees using the /worktree skill.")
   fi
 fi
 

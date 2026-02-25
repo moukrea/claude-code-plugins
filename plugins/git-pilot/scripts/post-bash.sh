@@ -69,7 +69,7 @@ if echo "$command" | grep -qE 'git\s+commit'; then
       unpushed_count=$(echo "$unpushed" | wc -l | tr -d ' ')
 
       # Emit push prompt — CLAUDE.md instructs Claude to act on this with AskUserQuestion
-      message="[git-pilot] ${unpushed_count} unpushed commit(s) on '${current_branch}'. Push command: git push -u ${remote_name} ${current_branch}"
+      message="[git-pilot] ${unpushed_count} unpushed commit(s) on '${current_branch}'. You MUST use AskUserQuestion NOW to ask the user whether to push. Push command: git push -u ${remote_name} ${current_branch}. Do not silently skip this prompt."
 
       jq -n --arg msg "$message" '{"continue": true, "systemMessage": $msg}'
       exit 0
@@ -88,11 +88,12 @@ if echo "$command" | grep -qE 'git\s+push'; then
     if echo "$stderr" | grep -qiE 'rejected|failed to push|non-fast-forward'; then
       current_branch=$(get_current_branch)
       remote_name=$(get_config "$config" '.remote.defaultName' 'origin')
-      message="[git-pilot] Push rejected -- remote '${remote_name}/${current_branch}' has new commits. Prompt the user:
+      message="[git-pilot] Push rejected — remote '${remote_name}/${current_branch}' has new commits. STOP and use AskUserQuestion NOW to present these options:
 1. Pull and rebase, then retry push (git pull --rebase && git push)
 2. Force push with lease (git push --force-with-lease)
 3. Pull and merge (git pull)
-4. Cancel"
+4. Cancel
+Do not attempt any resolution without the user's choice."
       jq -n --arg msg "$message" '{"continue": true, "systemMessage": $msg}'
       exit 0
     fi
