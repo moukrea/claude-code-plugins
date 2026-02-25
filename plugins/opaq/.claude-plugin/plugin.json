@@ -1,7 +1,9 @@
 {
   "name": "opaq",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Secure credential manager and execution wrapper. Use secrets in commands without ever seeing them — for humans and AI agents alike.",
   "hooks": "./hooks/hooks.json",
-  "skills": ["./skills/"]
+  "skills": [
+    "./skills/"
+  ]
 }
