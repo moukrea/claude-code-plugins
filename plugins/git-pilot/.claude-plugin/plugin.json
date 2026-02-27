@@ -1,6 +1,6 @@
 {
   "name": "git-pilot",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Automated git workflow management for Claude Code — branch creation, commit formatting, push/MR workflows, rebase and conflict resolution, worktree management, stash automation, agent teams support, and natural language configuration",
   "author": {
     "name": "git-pilot contributors"
