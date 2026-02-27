@@ -57,7 +57,6 @@ if is_git_repo && has_remote; then
   auto_fetch=$(get_config "$CONFIG" '.git.autoFetch' 'true')
   remote_name=$(get_config "$CONFIG" '.remote.defaultName' 'origin')
   if [[ "$auto_fetch" == "true" ]]; then
-    retries=$(get_config "$CONFIG" '.git.fetchRetries' '2')
     if ! fetch_with_retry "$remote_name" "$CONFIG"; then
       messages+=("[git-pilot] Remote fetch failed -- proceeding offline")
     fi

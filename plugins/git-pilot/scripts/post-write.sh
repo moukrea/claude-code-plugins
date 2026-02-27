@@ -32,8 +32,6 @@ fi
 threshold=$(get_config "$config" '.autoCommit.threshold' '3')
 mode=$(get_config "$config" '.autoCommit.mode' 'suggest')
 wip_prefix=$(get_config "$config" '.autoCommit.wipPrefix' 'wip: ')
-commit_pattern=$(get_config "$config" '.commit.pattern' '{{type}}({{scope}}): {{description}}')
-
 # Compute state file path
 state_file=$(get_state_file "$session_id")
 

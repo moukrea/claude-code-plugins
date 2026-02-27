@@ -56,8 +56,6 @@ if echo "$command" | grep -qE 'git\s+commit'; then
   # Only prompt when mode is "ask" — "always" and "never" are handled elsewhere
   if [[ "$push_on_finish" == "ask" ]] && has_remote; then
     current_branch=$(get_current_branch)
-    remote_name=$(get_config "$config" '.remote.defaultName' 'origin')
-
     # Check for unpushed commits
     unpushed=$(git log '@{u}..HEAD' --oneline 2>/dev/null || true)
     if ! git rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
