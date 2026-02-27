@@ -26,11 +26,11 @@ messages=()
 
 # Step 5: Check dependencies
 if ! command -v git >/dev/null 2>&1; then
-  messages+=("[git-pilot] Warning: git is not installed. Git workflow features are disabled.")
+  messages+=("[git-pilot] git not installed -- workflow features disabled")
 fi
 
 if ! command -v jq >/dev/null 2>&1; then
-  messages+=("[git-pilot] Warning: jq is not installed. Configuration loading may not work correctly.")
+  messages+=("[git-pilot] jq not installed -- config loading may fail")
 fi
 
 # Step 6: Git init check
@@ -43,12 +43,12 @@ if ! is_git_repo; then
       if [[ ! -f ".gitignore" ]]; then
         touch .gitignore
       fi
-      messages+=("[git-pilot] Initialized git repository with default branch '${default_branch}'.")
+      messages+=("[git-pilot] Initialized git repo (branch: ${default_branch})")
     else
-      messages+=("[git-pilot] Warning: Failed to initialize git repository.")
+      messages+=("[git-pilot] git init failed")
     fi
   else
-    messages+=("[git-pilot] Warning: Current directory is not a git repository. Run 'git init' to initialize one.")
+    messages+=("[git-pilot] Not a git repository")
   fi
 fi
 
@@ -59,7 +59,7 @@ if is_git_repo && has_remote; then
   if [[ "$auto_fetch" == "true" ]]; then
     retries=$(get_config "$CONFIG" '.git.fetchRetries' '2')
     if ! fetch_with_retry "$remote_name" "$CONFIG"; then
-      messages+=("[git-pilot] Warning: Could not fetch from '${remote_name}' after ${retries} attempts. Network may be unavailable. Proceeding without remote sync.")
+      messages+=("[git-pilot] Remote fetch failed -- proceeding offline")
     fi
   fi
 fi
@@ -78,9 +78,9 @@ if is_git_repo; then
       | grep -m1 'checkout: moving from' \
       | sed 's/checkout: moving from \([^ ]*\) to .*/\1/' || true)
     if [[ -n "$prev_branch" ]]; then
-      messages+=("[git-pilot] Detached HEAD at ${head_sha}. You MUST NOT make any code changes in detached HEAD state. Use AskUserQuestion NOW to ask the user to choose: (1) return to '${prev_branch}', (2) create a new branch from HEAD, or (3) continue in detached state. Do not proceed until the user responds.")
+      messages+=("[git-pilot] Detached HEAD at ${head_sha} (previous branch: ${prev_branch})")
     else
-      messages+=("[git-pilot] Detached HEAD at ${head_sha}. You MUST NOT make any code changes in detached HEAD state. Use AskUserQuestion NOW to ask the user to choose: (1) create a new branch from HEAD, or (2) continue in detached state. Do not proceed until the user responds.")
+      messages+=("[git-pilot] Detached HEAD at ${head_sha}")
     fi
   fi
 
@@ -92,47 +92,35 @@ if is_git_repo; then
       behind:*)
         behind_count="${tracking_status#behind:}"
         if git merge --ff-only "${remote_name}/${current_branch}" >/dev/null 2>&1; then
-          messages+=("[git-pilot] Branch '${current_branch}' was ${behind_count} commit(s) behind '${remote_name}/${current_branch}'. Fast-forwarded to latest.")
+          messages+=("[git-pilot] Branch '${current_branch}' fast-forwarded ${behind_count} commit(s)")
         else
-          messages+=("[git-pilot] Branch '${current_branch}' is ${behind_count} commit(s) behind '${remote_name}/${current_branch}' and fast-forward failed. You MUST use AskUserQuestion NOW to ask the user to choose: (1) pull with merge, (2) reset to remote, or (3) continue as-is. Do not proceed with any code changes until this is resolved.")
+          messages+=("[git-pilot] Branch '${current_branch}' is ${behind_count} commit(s) behind remote")
         fi
         ;;
       diverged:*:*)
         IFS=':' read -r _ ahead_count behind_count <<< "$tracking_status"
-        messages+=("[git-pilot] Branch '${current_branch}' has diverged from '${remote_name}/${current_branch}' (${ahead_count} local, ${behind_count} remote). You MUST use AskUserQuestion NOW to ask the user to choose: (1) rebase onto remote, (2) merge remote changes, (3) reset to remote, or (4) continue as-is. Do not make any code changes until this is resolved.")
+        messages+=("[git-pilot] Branch '${current_branch}' diverged: ${ahead_count} local, ${behind_count} remote")
         ;;
       ahead:*)
         ahead_count="${tracking_status#ahead:}"
-        messages+=("[git-pilot] Branch '${current_branch}' has ${ahead_count} unpushed commit(s). Before continuing, use AskUserQuestion to ask the user whether to push now or continue working.")
+        messages+=("[git-pilot] ${ahead_count} unpushed commit(s) on '${current_branch}'")
         ;;
       # up-to-date and no-remote: no message
     esac
   fi
 
-  # Step 7c: Branch creation prompt (existing v1 logic)
+  # Step 7c: Default branch detection
   auto_create=$(get_config "$CONFIG" '.branch.autoCreate' 'true')
 
   if [[ "$auto_create" == "true" ]] && [[ "$current_branch" == "$default_branch" ]]; then
-    branch_pattern=$(get_config "$CONFIG" '.branch.pattern' '{{type}}/{{description}}')
-    branch_types=$(echo "$CONFIG" | jq -r '.branch.types // ["feat","fix","refactor","docs","test","chore","style","perf","build","ci"] | join(", ")')
-
-    if has_uncommitted_changes; then
-      messages+=("[git-pilot] You are on the default branch '${default_branch}' with uncommitted changes. You MUST NOT make any further code changes until this is resolved. Use AskUserQuestion NOW to ask the user to choose: (1) stash changes and create a feature branch, (2) commit current changes first, or (3) continue on '${default_branch}'. Do not proceed until the user responds.")
-    else
-      messages+=("[git-pilot] You are on the default branch '${default_branch}'. You MUST NOT make any code changes until a feature branch is created. Use AskUserQuestion to ask the user for the branch type and description NOW, before doing anything else. Pattern: ${branch_pattern}, types: ${branch_types}.")
-    fi
+    messages+=("[git-pilot] On default branch '${default_branch}'")
   fi
 fi
 
 # Step 8: Remote detection (only if we are in a git repo)
 if is_git_repo; then
   if ! has_remote; then
-    prompt_remote=$(get_config "$CONFIG" '.remote.promptForRemote' 'true')
-    skip_remote=$(get_config "$CONFIG" '.remote.skipRemotePrompt' 'false')
-
-    if [[ "$prompt_remote" == "true" ]] && [[ "$skip_remote" == "false" ]]; then
-      messages+=("[git-pilot] No git remote configured. Use AskUserQuestion to ask the user whether to add a remote now (provide the command format: git remote add origin <url>) or skip. This affects push and sync capabilities for this session.")
-    fi
+    messages+=("[git-pilot] No git remote configured")
   fi
 fi
 
@@ -152,17 +140,17 @@ if [[ -n "$SESSION_ID" ]]; then
 fi
 
 # Step 10: Build and output final JSON
-system_message=""
+context_lines=""
 for msg in "${messages[@]+${messages[@]}}"; do
-  if [[ -n "$system_message" ]]; then
-    system_message="${system_message}"$'\n'"${msg}"
+  if [[ -n "$context_lines" ]]; then
+    context_lines="${context_lines}"$'\n'"${msg}"
   else
-    system_message="$msg"
+    context_lines="$msg"
   fi
 done
 
-if [[ -n "$system_message" ]]; then
-  jq -n --arg msg "$system_message" '{"continue": true, "systemMessage": $msg}'
+if [[ -n "$context_lines" ]]; then
+  jq -n --arg ctx "$context_lines" '{"continue": true, "additionalContext": $ctx}'
 else
   jq -n '{"continue": true}'
 fi
