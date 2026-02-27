@@ -124,30 +124,16 @@ fi
 #    Suppressed for agents (handled by early exit above).
 # ---------------------------------------------------------------------------
 if [[ "$session_had_changes" == "true" ]]; then
-  # Show only session commits when possible, fall back to full branch diff
   if [[ -n "$head_at_start" ]]; then
-    commit_log=$(git log "${head_at_start}..HEAD" --oneline --no-decorate 2>/dev/null || true)
-    files_changed_count=$(git diff --stat "${head_at_start}...HEAD" 2>/dev/null | tail -1 | grep -oP '^\s*\K\d+(?= files? changed)' || echo "0")
+    commit_count=$(git rev-list --count "${head_at_start}..HEAD" 2>/dev/null || echo "0")
+    files_changed_count=$(git diff --name-only "${head_at_start}...HEAD" 2>/dev/null | wc -l | tr -d ' ')
   else
-    commit_log=$(git log "${default_branch}..${current_branch}" --oneline --no-decorate 2>/dev/null || true)
-    files_changed_count=$(git diff --stat "${default_branch}...HEAD" 2>/dev/null | tail -1 | grep -oP '^\s*\K\d+(?= files? changed)' || echo "0")
+    commit_count=$(git rev-list --count "${default_branch}..${current_branch}" 2>/dev/null || echo "0")
+    files_changed_count=$(git diff --name-only "${default_branch}...HEAD" 2>/dev/null | wc -l | tr -d ' ')
   fi
 
-  if [[ -n "$commit_log" ]]; then
-    commit_count=$(echo "$commit_log" | wc -l | tr -d ' ')
-
-    commit_list=""
-    while IFS= read -r line; do
-      commit_list+="- ${line}"$'\n'
-    done <<< "$commit_log"
-    commit_list="${commit_list%$'\n'}"
-
-    summary="[git-pilot] Session Summary: ${current_branch}"
-    summary+=$'\n\n'"Commits (${commit_count}):"
-    summary+=$'\n'"${commit_list}"
-    summary+=$'\n'"Files changed: ${files_changed_count}"
-
-    messages+=("$summary")
+  if [[ "$commit_count" -gt 0 ]]; then
+    messages+=("[git-pilot] Session: ${commit_count} commit(s), ${files_changed_count} file(s) changed on '${current_branch}'")
   fi
 fi
 
@@ -164,44 +150,17 @@ if [[ "$session_had_changes" == "true" ]] && has_remote; then
     case "$drift_status" in
       drifted:*)
         drift_count="${drift_status#drifted:}"
-        messages+=("[git-pilot] Base branch '${default_branch}' has ${drift_count} new commit(s) since you branched. Rebasing '${current_branch}' onto '${remote_name}/${default_branch}' now. If conflicts arise, you MUST use AskUserQuestion to present resolution options before proceeding.")
+        messages+=("[git-pilot] '${default_branch}' has ${drift_count} new commit(s) -- consider rebasing before push")
         rebase_result=$(attempt_rebase "${remote_name}/${default_branch}" || true)
         case "$rebase_result" in
           success)
-            messages+=("[git-pilot] Rebase succeeded cleanly. Ready to push.")
+            messages+=("[git-pilot] Auto-rebase onto '${default_branch}' succeeded")
             ;;
           conflict)
-            conflict_strategy=$(get_config "$config" '.rebase.conflictStrategy' 'prompt')
-            case "$conflict_strategy" in
-              prompt)
-                conflicts=$(get_conflict_details)
-                conflict_count=$(echo "$conflicts" | jq 'length')
-                conflict_files=$(echo "$conflicts" | jq -r '.[].file' | paste -sd', ')
-                messages+=("[git-pilot] Rebase conflicts in ${conflict_count} file(s): ${conflict_files}. STOP and use AskUserQuestion NOW to ask the user to choose: (1) resolve conflicts manually, (2) abort rebase, or (3) fall back to merge. Do not proceed until the user responds.")
-                ;;
-              abort)
-                git rebase --abort 2>/dev/null || true
-                messages+=("[git-pilot] Rebase aborted due to conflicts. Pushing without rebase.")
-                ;;
-              merge-fallback)
-                git rebase --abort 2>/dev/null || true
-                if git merge "${remote_name}/${default_branch}" --no-edit 2>/dev/null; then
-                  messages+=("[git-pilot] Merge with '${default_branch}' succeeded (rebase had conflicts).")
-                else
-                  fallback_conflicts=$(get_conflict_details)
-                  fallback_conflict_count=$(echo "$fallback_conflicts" | jq 'length')
-                  messages+=("[git-pilot] Both rebase and merge have conflicts in ${fallback_conflict_count} file(s). STOP and use AskUserQuestion NOW to present the conflict details and ask the user how to proceed. Do not push or continue until conflicts are resolved.")
-                fi
-                ;;
-            esac
+            git rebase --abort 2>/dev/null || true
+            messages+=("[git-pilot] Auto-rebase aborted (conflicts) -- manual rebase needed")
             ;;
         esac
-        ;;
-      no-drift)
-        # No action needed
-        ;;
-      no-common-ancestor)
-        messages+=("[git-pilot] Cannot determine common ancestor between '${current_branch}' and '${default_branch}'. Skipping rebase. Before pushing, use AskUserQuestion to warn the user that the push may require manual review.")
         ;;
     esac
   fi
@@ -228,11 +187,11 @@ if [[ "$session_had_changes" == "true" ]] && has_remote; then
 
     case "$push_on_finish" in
       always)
-        messages+=("[git-pilot] You MUST push ${unpushed_count} commit(s) to '${remote_name}/${current_branch}' now. Run: git push -u ${remote_name} ${current_branch}. Execute this command immediately.")
+        messages+=("[git-pilot] Auto-push: run 'git push -u ${remote_name} ${current_branch}'")
         ;;
       *)
-        # "ask" and "never" are silent in the stop hook.
-        # Use /finish skill for interactive push/MR workflows.
+        # Only show unpushed count when auto-push is not emitted (auto-push implies unpushed)
+        messages+=("[git-pilot] ${unpushed_count} unpushed commit(s) remaining")
         ;;
     esac
   fi
@@ -272,82 +231,10 @@ if [[ "$session_had_changes" == "true" ]] && has_remote; then
     esac
 
     if [[ -n "$cli_tool" ]] && command -v "$cli_tool" >/dev/null 2>&1; then
-      title_from_branch=$(get_config "$config" '.mergeRequest.titleFromBranch' 'true')
-      mr_title=""
-      if [[ "$title_from_branch" == "true" ]]; then
-        branch_pattern=$(get_config "$config" '.branch.pattern' '{{type}}/{{description}}')
-        branch_type=$(echo "$current_branch" | cut -d'/' -f1)
-        branch_rest=$(echo "$current_branch" | cut -d'/' -f2-)
-
-        if [[ "$branch_pattern" == *"{{scope}}"* ]]; then
-          branch_scope=$(echo "$branch_rest" | cut -d'/' -f1)
-          branch_desc=$(echo "$branch_rest" | cut -d'/' -f2-)
-          branch_desc=$(echo "$branch_desc" | tr '-' ' ' | tr '_' ' ')
-          mr_title="${branch_type}(${branch_scope}): ${branch_desc}"
-        else
-          branch_desc=$(echo "$branch_rest" | tr '-' ' ' | tr '_' ' ')
-          mr_title="${branch_type}: ${branch_desc}"
-        fi
-      else
-        mr_title=$(git log -1 --format=%s 2>/dev/null || echo "$current_branch")
-      fi
-
-      body_template=$(echo "$config" | jq -r '.mergeRequest.bodyTemplate // empty')
-      mr_body=""
-      if [[ -n "$body_template" ]]; then
-        commits_text=$(git log "${default_branch}..${current_branch}" --oneline --no-decorate 2>/dev/null || true)
-        files_text=$(git diff --stat "${default_branch}...HEAD" 2>/dev/null || true)
-        summary_text=""
-        while IFS= read -r line; do
-          msg="${line#* }"
-          summary_text+="- ${msg}"$'\n'
-        done <<< "$commits_text"
-        summary_text="${summary_text%$'\n'}"
-
-        mr_body="$body_template"
-        mr_body="${mr_body//\{\{summary\}\}/$summary_text}"
-        mr_body="${mr_body//\{\{commits\}\}/$commits_text}"
-        mr_body="${mr_body//\{\{files\}\}/$files_text}"
-      else
-        commits_text=$(git log "${default_branch}..${current_branch}" --oneline --no-decorate 2>/dev/null || true)
-        files_text=$(git diff --stat "${default_branch}...HEAD" 2>/dev/null || true)
-        summary_text=""
-        while IFS= read -r line; do
-          msg="${line#* }"
-          summary_text+="- ${msg}"$'\n'
-        done <<< "$commits_text"
-        summary_text="${summary_text%$'\n'}"
-
-        mr_body="## Summary"$'\n'"${summary_text}"$'\n\n'"## Commits"$'\n'"${commits_text}"$'\n\n'"## Files Changed"$'\n'"${files_text}"
-      fi
-
-      mr_flags=""
-      mr_draft=$(get_config "$config" '.mergeRequest.draft' 'false')
-      if [[ "$mr_draft" == "true" ]]; then
-        mr_flags+=" --draft"
-      fi
-
-      mr_labels=$(echo "$config" | jq -r '.mergeRequest.labels // [] | .[]' 2>/dev/null)
-      while IFS= read -r label; do
-        if [[ -n "$label" ]]; then
-          mr_flags+=" --label \"${label}\""
-        fi
-      done <<< "$mr_labels"
-
-      mr_assign=$(get_config "$config" '.mergeRequest.assignToSelf' 'true')
-      if [[ "$mr_assign" == "true" ]]; then
-        mr_flags+=" --assignee @me"
-      fi
-
-      mr_cmd=""
       if [[ "$platform" == "github" ]]; then
-        mr_cmd="gh pr create --title \"${mr_title}\" --body \"${mr_body}\" --base ${default_branch}${mr_flags}"
+        messages+=("[git-pilot] Auto-MR: run 'gh pr create --base ${default_branch}'")
       elif [[ "$platform" == "gitlab" ]]; then
-        mr_cmd="glab mr create --title \"${mr_title}\" --description \"${mr_body}\" --target-branch ${default_branch}${mr_flags}"
-      fi
-
-      if [[ -n "$mr_cmd" ]]; then
-        messages+=("[git-pilot] You MUST create a merge/pull request now. Run: ${mr_cmd}. Execute this command immediately.")
+        messages+=("[git-pilot] Auto-MR: run 'glab mr create --target-branch ${default_branch}'")
       fi
     fi
     # If CLI tool is missing, stay silent — user can use /finish or create MR manually
@@ -379,7 +266,7 @@ if [[ "$active_count" -gt 0 ]]; then
   fi
   remaining=$(list_worktrees | jq '.worktrees | length')
   if [[ "$remaining" -gt 0 ]]; then
-    messages+=("[git-pilot] ${remaining} active worktree(s) remain after session cleanup. Before ending, use AskUserQuestion to ask the user whether to clean up remaining worktrees using the /worktree skill.")
+    messages+=("[git-pilot] ${remaining} active worktree(s) remaining")
   fi
 fi
 
@@ -391,6 +278,9 @@ if [[ -n "$session_id" ]]; then
   cleanup_state "$state_file"
 fi
 
+# Cap at 5 lines per spec
+messages=("${messages[@]:0:5}")
+
 # ---------------------------------------------------------------------------
 # 5. Output final JSON
 # ---------------------------------------------------------------------------
@@ -400,12 +290,12 @@ else
   full_message=""
   for i in "${!messages[@]}"; do
     if [[ $i -gt 0 ]]; then
-      full_message+=$'\n\n'
+      full_message+=$'\n'
     fi
     full_message+="${messages[$i]}"
   done
 
-  jq -n --arg msg "$full_message" '{"continue": true, "systemMessage": $msg}'
+  jq -n --arg ctx "$full_message" '{"continue": true, "additionalContext": $ctx}'
 fi
 
 exit 0

@@ -32,8 +32,6 @@ fi
 threshold=$(get_config "$config" '.autoCommit.threshold' '3')
 mode=$(get_config "$config" '.autoCommit.mode' 'suggest')
 wip_prefix=$(get_config "$config" '.autoCommit.wipPrefix' 'wip: ')
-commit_pattern=$(get_config "$config" '.commit.pattern' '{{type}}({{scope}}): {{description}}')
-
 # Compute state file path
 state_file=$(get_state_file "$session_id")
 
@@ -73,10 +71,10 @@ write_state "$state_file" "$reset_state"
 # Act based on mode
 case "$mode" in
   suggest)
-    message="[git-pilot] You have made ${threshold} file changes since the last commit (${modified_files}). You MUST commit your progress now for easier rollback. Use AskUserQuestion to confirm with the user, then commit with a descriptive message following the configured commit format."
+    message="[git-pilot] ${threshold} file changes since last commit (${modified_files})"
     ;;
   auto)
-    message="[git-pilot] Auto-commit threshold reached (${threshold} file changes). You MUST commit your current changes NOW with a descriptive message following the commit format: ${commit_pattern}. Do not continue writing code until this commit is made."
+    message="[git-pilot] Auto-commit threshold reached (${threshold} changes) — commit now"
     ;;
   silent)
     commit_msg="${wip_prefix}checkpoint after ${threshold} file changes"
@@ -90,9 +88,9 @@ case "$mode" in
     ;;
   *)
     # Unknown mode, fall back to suggest
-    message="[git-pilot] You have made ${threshold} file changes since the last commit (${modified_files}). You MUST commit your progress now for easier rollback. Use AskUserQuestion to confirm with the user, then commit with a descriptive message following the configured commit format."
+    message="[git-pilot] ${threshold} file changes since last commit (${modified_files})"
     ;;
 esac
 
 # Output the result
-jq -n --arg msg "$message" '{continue: true, systemMessage: $msg}'
+jq -n --arg msg "$message" '{"continue": true, "additionalContext": $msg}'
