@@ -41,12 +41,12 @@ for pat in "${BLOCKED[@]}"; do
 done
 
 # -- Block user-only subcommands ------------------------------------------------
-if echo "$COMMAND" | grep -qE 'opaq\s+(add|remove|edit|export|import|init|lock|unlock)\b'; then
+if echo "$COMMAND" | grep -qE 'opaq\s+(add|remove|edit|export|import|init|lock|unlock|shadows|cleanup)\b'; then
   jq -n '{
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
       permissionDecision: "deny",
-      permissionDecisionReason: "This opaq subcommand requires an interactive terminal and cannot be run by an agent. Only `search` and `run` are available."
+      permissionDecisionReason: "This opaq subcommand requires an interactive terminal and cannot be run by an agent. Only `search`, `run`, and `reveal` are available."
     }
   }'
   exit 0
