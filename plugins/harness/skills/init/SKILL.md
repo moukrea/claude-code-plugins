@@ -1,5 +1,5 @@
 ---
-name: harness-init
+name: init
 description: Initialize the harness for a project. Detects project type, creates
   path-specific rules, and adds harness instructions to CLAUDE.md. Run once per
   project to set up enhanced workflows.

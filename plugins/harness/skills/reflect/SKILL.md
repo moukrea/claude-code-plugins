@@ -1,5 +1,5 @@
 ---
-name: harness-reflect
+name: reflect
 description: After completing complex work, reflect on what could improve the
   project's configuration. May suggest updates to CLAUDE.md, rules, or skills.
   Use after major milestone completions.

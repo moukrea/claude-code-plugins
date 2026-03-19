@@ -43,7 +43,7 @@ fi
 
 if [[ "$SIMILAR_COUNT" -ge 3 ]]; then
   harness_log "failure-tracker" "warn" "3+ similar failures: $ERROR_SIG"
-  jq -nc '{"additionalContext": "[HARNESS] The same type of error has occurred 3+ times. Consider: (1) checking if the command/tool is installed, (2) reviewing the approach, (3) using /recovery skill."}'
+  jq -nc '{"additionalContext": "[HARNESS] The same type of error has occurred 3+ times. Consider: (1) checking if the command/tool is installed, (2) reviewing the approach, (3) using /harness:recovery skill."}'
 else
   harness_log "failure-tracker" "track" "count=$SIMILAR_COUNT sig=$ERROR_SIG"
 fi

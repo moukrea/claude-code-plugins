@@ -20,7 +20,7 @@ When the harness classifies a prompt, adapt your approach:
 | `massive` | Ingest spec fully, decompose into granular tasks, use agent teams or batch processing |
 
 If the harness flags a prompt as vague, clarify requirements before starting work.
-Use the `/requirements-interview` skill for structured gathering.
+Use the `/harness:requirements-interview` skill for structured gathering.
 
 ## Rule 2: Never remove tests
 
@@ -58,7 +58,7 @@ warning (3+ similar failures), change your approach rather than retrying the
 same command. Consider:
 - Reading error output carefully
 - Trying an alternative approach
-- Using the `/recovery` skill
+- Using the `/harness:recovery` skill
 
 ## Rule 7: Lock file caution
 
@@ -99,15 +99,15 @@ continuing work.
 
 | Skill | When to use |
 |-------|-------------|
-| `/harness-init` | Initialize harness for a new project (run once per project) |
-| `/session-bridge` | Resume work from a previous session |
-| `/task-analyze` | Analyze task complexity before starting |
-| `/task-decompose` | Break complex work into parallel tasks |
-| `/requirements-interview` | Gather requirements for vague tasks |
-| `/spec-ingest` | Ingest a specification document |
-| `/verify-work` | Comprehensive verification of completed work |
-| `/progress-report` | Generate a progress summary |
-| `/recovery` | Recover from stuck or failing state |
-| `/harness-reflect` | Reflect on improvements after milestones |
-| `/deployment-monitor` | Monitor a deployment or CI pipeline |
-| `/logs` | Review harness hook activity logs |
+| `/harness:init` | Initialize harness for a new project (run once per project) |
+| `/harness:session-bridge` | Resume work from a previous session |
+| `/harness:task-analyze` | Analyze task complexity before starting |
+| `/harness:task-decompose` | Break complex work into parallel tasks |
+| `/harness:requirements-interview` | Gather requirements for vague tasks |
+| `/harness:spec-ingest` | Ingest a specification document |
+| `/harness:verify-work` | Comprehensive verification of completed work |
+| `/harness:progress-report` | Generate a progress summary |
+| `/harness:recovery` | Recover from stuck or failing state |
+| `/harness:reflect` | Reflect on improvements after milestones |
+| `/harness:deployment-monitor` | Monitor a deployment or CI pipeline |
+| `/harness:logs` | Review harness hook activity logs |
