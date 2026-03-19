@@ -71,6 +71,28 @@
         "conventional-commits"
       ],
       "category": "productivity"
+    },
+    {
+      "name": "harness",
+      "source": "./plugins/harness",
+      "description": "Transparent harness for long-running Claude Code agents. Automatically classifies tasks, decomposes complex work, tracks progress, verifies output, bridges sessions, and adapts to any project type. Zero configuration required.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Emeric"
+      },
+      "homepage": "https://github.com/moukrea/claude-code-plugins",
+      "repository": "https://github.com/moukrea/claude-code-plugins",
+      "license": "MIT",
+      "keywords": [
+        "harness",
+        "orchestration",
+        "agents",
+        "task-management",
+        "verification",
+        "session-bridging",
+        "progress-tracking"
+      ],
+      "category": "productivity"
     }
   ]
 }

@@ -1,0 +1,20 @@
+{
+  "name": "harness",
+  "version": "1.0.0",
+  "description": "Transparent harness for long-running Claude Code agents. Automatically classifies tasks, decomposes complex work, tracks progress, verifies output, bridges sessions, and adapts to any project type. Zero configuration required.",
+  "author": {
+    "name": "Emeric"
+  },
+  "license": "MIT",
+  "keywords": [
+    "harness",
+    "orchestration",
+    "agents",
+    "task-management",
+    "verification",
+    "session-bridging",
+    "progress-tracking"
+  ],
+  "hooks": "./hooks/hooks.json",
+  "skills": "./skills/"
+}
