@@ -7,13 +7,8 @@ harness_start_timer 2>/dev/null || true
 # TaskCompleted hook (blocking) -- verify task completion claim is valid
 # Performance target: < 30s
 
-# Read stdin
-INPUT=$(cat) || exit 0
-
-# Require jq
-command -v jq >/dev/null 2>&1 || exit 0
-
-# Extract task info (for logging/context, not strictly needed for verification)
+# Read stdin (consume it)
+cat > /dev/null 2>&1 || true
 # Detect verification command
 TEST_CMD=$(detect_test_cmd)
 
