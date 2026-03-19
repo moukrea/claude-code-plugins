@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "category": {
+      "type": "string",
+      "enum": ["functional", "ui", "api", "data", "integration", "non-functional"]
+    },
+    "description": {
+      "type": "string",
+      "description": "Specific, testable description of the feature"
+    },
+    "verification_steps": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Steps to verify the feature works"
+    },
+    "priority": {
+      "type": "integer",
+      "enum": [1, 2, 3],
+      "description": "1=must-have, 2=important, 3=nice-to-have"
+    },
+    "depends_on": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "IDs of features that must be completed first"
+    },
+    "module": {
+      "type": "string",
+      "description": "Logical module this feature belongs to"
+    }
+  },
+  "required": ["category", "description", "verification_steps", "priority"]
+}
