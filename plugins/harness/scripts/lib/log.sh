@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Shared logging helper for harness hooks
 # Source this at the top of each hook script:
 #   source "$(dirname "$0")/lib/log.sh" 2>/dev/null || true

@@ -6,8 +6,8 @@ harness_start_timer 2>/dev/null || true
 # PreCompact hook (matcher: auto) -- preserve critical state before compaction
 # Performance target: < 100ms
 
-# Read stdin (consume it even if unused)
-INPUT=$(cat) || exit 0
+# Read stdin (consume it)
+cat > /dev/null 2>&1 || true
 
 # Require jq for output
 command -v jq >/dev/null 2>&1 || exit 0

@@ -7,7 +7,7 @@ harness_start_timer 2>/dev/null || true
 # Performance target: < 200ms
 
 # Read stdin (consume it)
-INPUT=$(cat) || exit 0
+cat > /dev/null 2>&1 || true
 
 # Detect OS and send notification
 _NOTIFY_PLATFORM=""

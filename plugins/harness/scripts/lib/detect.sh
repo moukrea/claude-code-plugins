@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Shared project-detection helpers for harness hooks
 # Source this at the top of each hook script:
 #   source "$(dirname "$0")/lib/detect.sh" 2>/dev/null || true

@@ -29,28 +29,20 @@ has_pattern() {
 # File references count (paths like src/foo.ts, ./bar.py, etc.)
 FILE_REFS=$(echo "$PROMPT" | grep -oE '[a-zA-Z0-9_./-]*\/[a-zA-Z0-9_./-]+\.[a-zA-Z]{1,6}' 2>/dev/null | wc -l | tr -d ' ') || FILE_REFS=0
 
-# Code block detection
-HAS_CODE_BLOCKS=false
-echo "$PROMPT" | grep -q '```' 2>/dev/null && HAS_CODE_BLOCKS=true
-
 # Classify complexity
 COMPLEXITY="simple"
 EFFORT="low"
 NEEDS_INTERVIEW=false
-NEEDS_PLAN=false
 
 if [[ "$WORD_COUNT" -gt 500 ]] || has_pattern '(requirements|specification|prd|acceptance criteria)'; then
   COMPLEXITY="massive"
   EFFORT="max"
-  NEEDS_PLAN=true
 elif [[ "$WORD_COUNT" -gt 150 ]] || { [[ "$FILE_REFS" -gt 5 ]] && has_pattern '(migration|cross-cutting|refactor.*all|across)'; }; then
   COMPLEXITY="complex"
   EFFORT="high"
-  NEEDS_PLAN=true
 elif [[ "$WORD_COUNT" -gt 50 ]] || { [[ "$WORD_COUNT" -gt 15 ]] && has_pattern '(add.*feature|new feature|refactor|implement|create.*new|build.*new|design.*system|migrate|redesign)'; }; then
   COMPLEXITY="medium"
   EFFORT="medium"
-  NEEDS_PLAN=true
 else
   # Simple: short prompts about fixes, typos, small changes
   COMPLEXITY="simple"

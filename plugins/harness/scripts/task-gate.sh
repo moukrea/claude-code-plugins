@@ -14,8 +14,6 @@ INPUT=$(cat) || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
 
 # Extract task info (for logging/context, not strictly needed for verification)
-TASK_SUBJECT=$(echo "$INPUT" | jq -r '.task_subject // empty' 2>/dev/null) || true
-
 # Detect verification command
 TEST_CMD=$(detect_test_cmd)
 

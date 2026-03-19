@@ -6,8 +6,8 @@ harness_start_timer 2>/dev/null || true
 # PostCompact hook (async) -- inject context if state changed during compaction
 # Performance target: < 100ms
 
-# Read stdin
-INPUT=$(cat) || exit 0
+# Read stdin (consume it)
+cat > /dev/null 2>&1 || true
 
 # Require jq
 command -v jq >/dev/null 2>&1 || exit 0
