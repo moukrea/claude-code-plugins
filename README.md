@@ -9,6 +9,7 @@ Productivity and security plugins for [Claude Code](https://claude.ai/code).
 | [opaq](plugins/opaq/) | Secure credential access — use secrets in commands without ever exposing them |
 | [git-pilot](plugins/git-pilot/) | Automated git workflow — branch creation, commit formatting, push and MR prompts |
 | [craft](plugins/craft/) | Generate multi-phase implementation prompts from technical specs |
+| [harness](plugins/harness/) | Agent orchestration harness — task classification, verification gates, session bridging |
 
 ## Installation
 
@@ -26,6 +27,7 @@ Install plugins:
 /plugin install opaq@moukrea-plugins
 /plugin install git-pilot@moukrea-plugins
 /plugin install craft@moukrea-plugins
+/plugin install harness@moukrea-plugins
 ```
 
 ### From a local clone
