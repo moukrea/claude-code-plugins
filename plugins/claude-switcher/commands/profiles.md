@@ -9,12 +9,12 @@ allowed-tools: Bash
 Show the user their saved profiles:
 
 ```bash
-$CLAUDE_PLUGIN_ROOT/scripts/claude-switcher.sh list
+~/.claude-switcher/cli list
 ```
 
 Present the output to the user. The active profile is marked with `*`.
 
 If the user wants more details about a specific profile:
 ```bash
-$CLAUDE_PLUGIN_ROOT/scripts/claude-switcher.sh show <profile-name>
+~/.claude-switcher/cli show <profile-name>
 ```

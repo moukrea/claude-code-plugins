@@ -4,7 +4,12 @@ set -eu
 # claude-switcher -- Switch between multiple Claude Code accounts
 # Entry point: sources library modules and dispatches commands
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Resolve symlinks to find the real script location
+_self="$0"
+if [ -L "$_self" ]; then
+    _self="$(readlink -f "$_self" 2>/dev/null || readlink "$_self")"
+fi
+SCRIPT_DIR="$(cd "$(dirname "$_self")" && pwd)"
 LIB_DIR="${SCRIPT_DIR}/lib"
 
 # Source library modules in dependency order

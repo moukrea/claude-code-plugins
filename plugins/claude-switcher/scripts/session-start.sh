@@ -21,6 +21,49 @@ if [ -z "$active" ]; then
     exit 0
 fi
 
+# Verify active profile matches live credentials
+live_email=""
+if [ -f "${HOME}/.claude.json" ]; then
+    live_email=$(jq -r '.oauthAccount.emailAddress // empty' "${HOME}/.claude.json" 2>/dev/null)
+fi
+
+if [ -n "$live_email" ] && [ -d "${PROFILES_DIR}/${active}" ]; then
+    saved_email=$(jq -r '.emailAddress // empty' "${PROFILES_DIR}/${active}/account-metadata.json" 2>/dev/null)
+    if [ -n "$saved_email" ] && [ "$live_email" != "$saved_email" ]; then
+        # Live credentials don't match active profile -- find the right one
+        matched=""
+        for pdir in "$PROFILES_DIR"/*/; do
+            [ -d "$pdir" ] || continue
+            pname=$(basename "$pdir")
+            pemail=$(jq -r '.emailAddress // empty' "${pdir}/account-metadata.json" 2>/dev/null)
+            if [ "$pemail" = "$live_email" ]; then
+                matched="$pname"
+                break
+            fi
+        done
+        if [ -n "$matched" ]; then
+            # Auto-correct: update config to reflect actual credentials
+            tmp=$(mktemp "${CONFIG_FILE}.XXXXXX")
+            jq --arg p "$matched" --arg prev "$active" \
+                '.active_profile = $p | .previous_profile = $prev' "$CONFIG_FILE" > "$tmp" \
+                && mv "$tmp" "$CONFIG_FILE"
+            chmod 600 "$CONFIG_FILE"
+            active="$matched"
+        else
+            # Live credentials don't match any saved profile -- show live info directly
+            live_org=$(jq -r '.oauthAccount.organizationName // empty' "${HOME}/.claude.json" 2>/dev/null)
+            live_sub="unknown"
+            if [ -f "${HOME}/.claude/.credentials.json" ]; then
+                live_sub=$(jq -r '.claudeAiOauth.subscriptionType // "unknown"' "${HOME}/.claude/.credentials.json" 2>/dev/null)
+            fi
+            cat <<EOF
+{"result":"Claude Code profile: (unsaved) (${live_email}${live_org:+, $live_org}, ${live_sub}) -- use /save <name> to save this account"}
+EOF
+            exit 0
+        fi
+    fi
+fi
+
 # Auto-switch-back check
 auto_switch_msg=""
 

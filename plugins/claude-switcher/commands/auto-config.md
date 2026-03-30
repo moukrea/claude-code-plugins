@@ -11,12 +11,12 @@ Manage automatic profile switching configuration.
 
 If no argument provided, show the current config:
 ```bash
-$CLAUDE_PLUGIN_ROOT/scripts/claude-switcher.sh auto-config show
+~/.claude-switcher/cli auto-config show
 ```
 
 If argument provided, run the matching subcommand:
 ```bash
-$CLAUDE_PLUGIN_ROOT/scripts/claude-switcher.sh auto-config $ARGUMENTS
+~/.claude-switcher/cli auto-config $ARGUMENTS
 ```
 
 After showing config, explain what each setting means:
@@ -25,13 +25,13 @@ After showing config, explain what each setting means:
 - **Daily reset**: When the primary account's daily session limit resets (from the Claude usage screen)
 - **Weekly reset**: When the weekly limit resets
 
-If the user is setting up auto-switch for the first time, guide them through:
+If the user is setting up auto-switch for the first time, guide them through using slash commands:
 1. Run `/setup` first to enable rate limit capture in the status line
-2. Enable: `auto-config enable`
-3. Set primary: `auto-config primary work`
-4. Add fallback: `auto-config fallback personal`
-5. Set threshold: `auto-config threshold 97` (switch at 97% real usage)
-6. Set daily reset: `auto-config daily-reset 15:00 Europe/Paris`
-7. Set weekly reset: `auto-config weekly-reset Monday 10:00`
+2. `/auto-config enable`
+3. `/auto-config primary work`
+4. `/auto-config fallback personal`
+5. `/auto-config threshold 97` (switch at 97% real usage)
+6. `/auto-config daily-reset 15:00 Europe/Paris`
+7. `/auto-config weekly-reset Monday 10:00`
 
 The **threshold** controls preemptive switching. The PostToolUse hook reads real rate limit data (five_hour and seven_day percentages captured by the status line) and switches to the fallback when either exceeds the threshold.

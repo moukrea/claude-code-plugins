@@ -16,38 +16,23 @@ Register as a Claude Code plugin:
 claude --plugin-dir /path/to/claude-switcher
 ```
 
-Or add to `~/.claude/settings.json`:
-
-```json
-{
-  "plugins": ["/path/to/claude-switcher"]
-}
-```
+That's it. On first load, the plugin checks prerequisites and creates a CLI symlink at `~/.claude-switcher/cli` so all slash commands resolve automatically -- you never need to know or type the plugin's install path.
 
 **Requires**: bash 4.0+, [jq](https://jqlang.github.io/jq/download/)
 
 ## Quick Start
 
-```bash
-# Set up rate limit capture
-./scripts/claude-switcher.sh setup-plugin
+Everything is done through slash commands inside Claude Code:
 
-# Save your current account
-./scripts/claude-switcher.sh save work
-
-# Log in to the other account
-claude auth logout && claude auth login
-
-# Save that one too
-./scripts/claude-switcher.sh save personal
-
-# Configure auto-switching
-./scripts/claude-switcher.sh auto-config enable
-./scripts/claude-switcher.sh auto-config primary work
-./scripts/claude-switcher.sh auto-config fallback personal
-./scripts/claude-switcher.sh auto-config threshold 97
-./scripts/claude-switcher.sh auto-config daily-reset 15:00 Europe/Paris
-```
+1. `/setup` — inject rate limit capture into status line
+2. `/save work` — save your current logged-in account
+3. Log in to the other account: `! claude auth logout && claude auth login`
+4. `/save personal` — save the second account
+5. `/auto-config enable` — enable auto-switching
+6. `/auto-config primary work` — set primary profile
+7. `/auto-config fallback personal` — set fallback profile
+8. `/auto-config threshold 97` — switch at 97% usage
+9. `/auto-config daily-reset 15:00 Europe/Paris` — set daily reset time
 
 ## Slash Commands
 
@@ -55,6 +40,7 @@ Once installed as a plugin, use these in Claude Code sessions:
 
 | Command | Description |
 |---------|-------------|
+| `/save <name>` | Save current account as a named profile |
 | `/switch <name>` | Switch to a profile |
 | `/switch prev` | Switch to previous profile |
 | `/profiles` | List all profiles |
@@ -73,24 +59,26 @@ When enabled, claude-switcher automatically manages account switching:
 
 ### Configuration
 
-```bash
-./scripts/claude-switcher.sh auto-config show          # View config
-./scripts/claude-switcher.sh setup-plugin                # Inject rate limit capture into status line
-./scripts/claude-switcher.sh auto-config enable         # Enable
-./scripts/claude-switcher.sh auto-config primary work   # Set primary
-./scripts/claude-switcher.sh auto-config fallback personal  # Add fallback
-./scripts/claude-switcher.sh auto-config threshold 97   # Switch at 97% real usage
-./scripts/claude-switcher.sh auto-config daily-reset 15:00 Europe/Paris
-./scripts/claude-switcher.sh auto-config weekly-reset Monday 10:00
-./scripts/claude-switcher.sh auto-config reset-state    # Clear state
-```
+All configuration is done via the `/auto-config` slash command:
+
+| Command | Description |
+|---------|-------------|
+| `/auto-config` | View current config |
+| `/auto-config enable` | Enable auto-switching |
+| `/auto-config disable` | Disable auto-switching |
+| `/auto-config primary work` | Set primary profile |
+| `/auto-config fallback personal` | Add fallback profile |
+| `/auto-config threshold 97` | Switch at 97% real usage |
+| `/auto-config daily-reset 15:00 Europe/Paris` | Set daily reset time |
+| `/auto-config weekly-reset Monday 10:00` | Set weekly reset time |
+| `/auto-config reset-state` | Clear auto-switch state |
 
 ## CLI Reference
 
 All commands are also available via the script directly:
 
 ```
-./scripts/claude-switcher.sh <command> [options]
+~/.claude-switcher/cli <command> [options]
 
 Profile Management:
   save <name> [--force]     Save current auth as a profile
@@ -136,5 +124,5 @@ Other:
 ## Uninstall
 
 ```bash
-./scripts/claude-switcher.sh uninstall
+~/.claude-switcher/cli uninstall
 ```

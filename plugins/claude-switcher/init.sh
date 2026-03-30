@@ -18,10 +18,16 @@ fi
 echo "jq $(jq --version)"
 
 echo "=== Smoke test ==="
-if [ -f scripts/claude-switcher.sh ]; then
-    sh scripts/claude-switcher.sh --help >/dev/null 2>&1 && echo "CLI: ok" || echo "CLI: not ready yet"
+PLUGIN_ROOT="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$PLUGIN_ROOT/scripts/claude-switcher.sh" ]; then
+    sh "$PLUGIN_ROOT/scripts/claude-switcher.sh" --help >/dev/null 2>&1 && echo "CLI: ok" || echo "CLI: not ready yet"
 else
     echo "CLI: not built yet"
 fi
+
+echo "=== CLI symlink ==="
+mkdir -p "$HOME/.claude-switcher"
+ln -sf "$PLUGIN_ROOT/scripts/claude-switcher.sh" "$HOME/.claude-switcher/cli"
+echo "Linked ~/.claude-switcher/cli"
 
 echo "=== Ready ==="

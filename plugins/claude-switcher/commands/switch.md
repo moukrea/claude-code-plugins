@@ -10,7 +10,7 @@ allowed-tools: Bash
 The user wants to switch their Claude Code account. Run the switcher command:
 
 ```bash
-$CLAUDE_PLUGIN_ROOT/scripts/claude-switcher.sh use $ARGUMENTS
+~/.claude-switcher/cli use $ARGUMENTS
 ```
 
 After switching:
@@ -20,7 +20,7 @@ After switching:
 
 If no argument was provided, show the available profiles:
 ```bash
-$CLAUDE_PLUGIN_ROOT/scripts/claude-switcher.sh list
+~/.claude-switcher/cli list
 ```
 
 Then ask the user which profile they want to switch to.
