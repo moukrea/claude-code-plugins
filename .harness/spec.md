@@ -140,3 +140,26 @@ The status line script already runs on every Claude Code render and receives the
    - Update README to reflect simplified architecture
    - Update auto-config.md with new show-profile subcommand
    - Bump version to 3.0.0 (breaking: removes PostToolUse hook, adds config key)
+
+## Iteration — 2026-03-30 (hooks.json schema fix, init.sh robustness, README rewrite)
+
+### Context
+The published plugin (v2.1.3 in marketplace cache) fails to load hooks because hooks.json is missing the required top-level `"hooks"` wrapper key. Claude Code expects `{"hooks": {"EventName": [...]}}` but the file has `{"EventName": [...]}`. Additionally, the CLI symlink (`~/.claude-switcher/cli`) depends on init.sh running from the correct path, and the README needs to be a comprehensive user guide.
+
+### Changes Required
+
+1. **Fix hooks.json schema** (`hooks/hooks.json`):
+   - Wrap event handlers under a top-level `"hooks"` key: `{"hooks": {"SessionStart": [...], "StopFailure": [...]}}`
+   - Current: events at top level. Expected: `{"hooks": {events...}}`
+
+2. **Make init.sh more robust** (`init.sh`):
+   - Ensure it creates the `~/.claude-switcher/` directory
+   - Ensure it always re-creates the CLI symlink pointing to the plugin's own scripts directory
+   - Run setup-plugin automatically (install helpers) so the status line integration works out of the box
+   - Must work both from local dev path and from marketplace cache path
+
+3. **Rewrite README** (`README.md`):
+   - Complete user guide: install, save profiles, switch, set primary/fallback, auto-switch config, status line indicator
+   - Clear step-by-step instructions for each feature
+   - Document all slash commands with examples
+   - Explain how auto-switch works (status line driven + StopFailure safety net)
