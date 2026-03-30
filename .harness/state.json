@@ -1,11 +1,12 @@
 {
-  "phase": "building",
+  "phase": "qa",
   "qa_round": 0,
-  "updated_at": "2026-03-30T21:20:00",
+  "updated_at": "2026-03-30T21:30:00",
   "history": [
     {"phase": "complete", "timestamp": "2026-03-30T16:55:00", "note": "Iteration 1 QA passed."},
     {"phase": "complete", "timestamp": "2026-03-30T20:25:00", "note": "Iteration 2 QA passed."},
     {"phase": "complete", "timestamp": "2026-03-30T21:10:00", "note": "Iteration 3 QA passed. Scores: PD 8, F 8, VD N/A, CQ 7"},
-    {"phase": "building", "timestamp": "2026-03-30T21:20:00", "note": "Iteration 4: Fix hooks.json schema, init.sh robustness, README rewrite. 3 changes."}
+    {"phase": "building", "timestamp": "2026-03-30T21:20:00", "note": "Iteration 4: Fix hooks.json schema, init.sh, README. 3 changes."},
+    {"phase": "qa", "timestamp": "2026-03-30T21:30:00", "note": "All iteration 4 changes implemented. Sending to evaluator."}
   ]
 }

@@ -12,6 +12,6 @@
 - init.sh runs but doesn't install status line helpers
 
 ### Build
-- [ ] Fix hooks.json schema (add top-level "hooks" wrapper)
-- [ ] Make init.sh robust (install helpers, setup-plugin)
-- [ ] Rewrite README as comprehensive user guide
+- [x] Fix hooks.json schema (add top-level "hooks" wrapper)
+- [x] Make init.sh robust (install helpers, run setup-plugin automatically)
+- [x] Rewrite README as comprehensive user guide
