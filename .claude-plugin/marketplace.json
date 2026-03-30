@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Productivity and security plugins for Claude Code",
-    "version": "1.1.10",
+    "version": "1.1.11",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -33,7 +33,7 @@
       "name": "claude-switcher",
       "source": "./plugins/claude-switcher",
       "description": "Switch between multiple Claude Code accounts instantly by swapping credential profiles",
-      "version": "2.1.2",
+      "version": "2.1.3",
       "author": {
         "name": "moukrea"
       },
