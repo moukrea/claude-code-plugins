@@ -3,6 +3,7 @@
 # Sourced by the main entry point -- not executed directly
 
 STATUSLINE_SNIPPET_MARKER="# claude-switcher: capture rate limits"
+STATUSLINE_AUTOSWITCH_MARKER="# claude-switcher: auto-switch"
 STATUSLINE_PROFILE_MARKER="# claude-switcher: profile indicator"
 
 cmd_setup() {
@@ -100,14 +101,126 @@ _install_profile_helper() {
     cat > "$helper_path" <<'HELPER'
 # claude-switcher: profile indicator helper
 # Sourced by the status line script to set $_cs_indicator
-_cs_profile=$(jq -r '.active_profile // empty' ~/.claude-switcher/config.json 2>/dev/null)
 _cs_indicator=""
-if [ -n "$_cs_profile" ]; then
-    if [ -f ~/.claude-switcher/auto-switch-state.json ] && [ "$(jq -r '.on_fallback // false' ~/.claude-switcher/auto-switch-state.json 2>/dev/null)" = "true" ]; then
-        _cs_indicator="[${_cs_profile} FALLBACK] "
-    else
-        _cs_indicator="[${_cs_profile}] "
+_cs_show=$(jq -r '.show_in_statusline // false' ~/.claude-switcher/auto-switch.json 2>/dev/null)
+if [ "$_cs_show" = "true" ]; then
+    _cs_profile=$(jq -r '.active_profile // empty' ~/.claude-switcher/config.json 2>/dev/null)
+    if [ -n "$_cs_profile" ]; then
+        if [ -f ~/.claude-switcher/auto-switch-state.json ] && [ "$(jq -r '.on_fallback // false' ~/.claude-switcher/auto-switch-state.json 2>/dev/null)" = "true" ]; then
+            _cs_indicator="[${_cs_profile} FALLBACK] "
+        else
+            _cs_indicator="[${_cs_profile}] "
+        fi
     fi
+fi
+HELPER
+    chmod 644 "$helper_path"
+}
+
+_install_autoswitch_helper() {
+    local helper_path="${SWITCHER_DIR}/statusline-autoswitch.sh"
+    cat > "$helper_path" <<'HELPER'
+# claude-switcher: auto-switch helper
+# Sourced by the status line script. Expects $input (raw JSON from Claude Code).
+# Reads rate limits from $input, checks thresholds, spawns async switches.
+
+_cs_autoswitch() {
+    local config_file="$HOME/.claude-switcher/auto-switch.json"
+    local state_file="$HOME/.claude-switcher/auto-switch-state.json"
+    local config_main="$HOME/.claude-switcher/config.json"
+    local cli="$HOME/.claude-switcher/cli"
+
+    # Bail fast if auto-switch not configured or CLI not available
+    [ -f "$config_file" ] || return 0
+    [ -x "$cli" ] || [ -f "$cli" ] || return 0
+
+    local enabled
+    enabled=$(jq -r '.enabled // false' "$config_file" 2>/dev/null)
+    [ "$enabled" = "true" ] || return 0
+
+    # Read rate limits directly from the status line input JSON (freshest data)
+    local five_pct seven_pct
+    five_pct=$(printf '%s' "$input" | jq -r '.rate_limits.five_hour.used_percentage // 0' 2>/dev/null)
+    seven_pct=$(printf '%s' "$input" | jq -r '.rate_limits.seven_day.used_percentage // 0' 2>/dev/null)
+
+    # Truncate to integers
+    five_pct=${five_pct%.*}; five_pct=${five_pct:-0}
+    seven_pct=${seven_pct%.*}; seven_pct=${seven_pct:-0}
+
+    local max_pct=$five_pct
+    [ "$seven_pct" -gt "$max_pct" ] 2>/dev/null && max_pct=$seven_pct
+
+    # Check current state
+    local on_fallback="false"
+    if [ -f "$state_file" ]; then
+        on_fallback=$(jq -r '.on_fallback // false' "$state_file" 2>/dev/null)
+    fi
+
+    if [ "$on_fallback" = "true" ]; then
+        # On fallback — check if primary's limits have reset
+        local switch_back_at
+        switch_back_at=$(jq -r '.switch_back_at // empty' "$state_file" 2>/dev/null)
+        if [ -n "$switch_back_at" ] && [ "$switch_back_at" != "null" ]; then
+            local now_epoch
+            now_epoch=$(date +%s)
+            if [ "$now_epoch" -ge "$switch_back_at" ] 2>/dev/null; then
+                # Time to switch back — spawn async
+                sh "$cli" auto-config reset-state >/dev/null 2>&1
+                local original
+                original=$(jq -r '.original_profile // empty' "$state_file" 2>/dev/null)
+                if [ -n "$original" ]; then
+                    (sh "$cli" use "$original" >/dev/null 2>&1) &
+                fi
+            fi
+        fi
+    else
+        # On primary — check if we need to preemptively switch
+        local threshold
+        threshold=$(jq -r '.preemptive_switch_percent // 97' "$config_file" 2>/dev/null)
+        if [ "$max_pct" -ge "$threshold" ] 2>/dev/null; then
+            # Threshold exceeded — spawn async switch
+            (sh "$cli" check-limits >/dev/null 2>&1) &
+        fi
+    fi
+
+    # Profile mismatch detection
+    local active_profile live_email
+    active_profile=$(jq -r '.active_profile // empty' "$config_main" 2>/dev/null)
+    if [ -n "$active_profile" ] && [ -d "$HOME/.claude-switcher/profiles/$active_profile" ]; then
+        live_email=$(printf '%s' "$input" | jq -r '.account.email // empty' 2>/dev/null)
+        if [ -z "$live_email" ] && [ -f "$HOME/.claude.json" ]; then
+            live_email=$(jq -r '.oauthAccount.emailAddress // empty' "$HOME/.claude.json" 2>/dev/null)
+        fi
+        if [ -n "$live_email" ]; then
+            local saved_email
+            saved_email=$(jq -r '.emailAddress // empty' "$HOME/.claude-switcher/profiles/$active_profile/account-metadata.json" 2>/dev/null)
+            if [ -n "$saved_email" ] && [ "$live_email" != "$saved_email" ]; then
+                local matched=""
+                for pdir in "$HOME/.claude-switcher/profiles"/*/; do
+                    [ -d "$pdir" ] || continue
+                    local pemail
+                    pemail=$(jq -r '.emailAddress // empty' "${pdir}/account-metadata.json" 2>/dev/null)
+                    if [ "$pemail" = "$live_email" ]; then
+                        matched=$(basename "$pdir")
+                        break
+                    fi
+                done
+                if [ -n "$matched" ] && [ "$matched" != "$active_profile" ]; then
+                    local tmp
+                    tmp=$(mktemp "${config_main}.XXXXXX")
+                    jq --arg p "$matched" --arg prev "$active_profile" \
+                        '.active_profile = $p | .previous_profile = $prev' "$config_main" > "$tmp" \
+                        && mv "$tmp" "$config_main"
+                    chmod 600 "$config_main"
+                fi
+            fi
+        fi
+    fi
+}
+
+# Run only if $input is set (we're being sourced from a status line script)
+if [ -n "${input:-}" ]; then
+    _cs_autoswitch
 fi
 HELPER
     chmod 644 "$helper_path"
@@ -123,6 +236,11 @@ cmd_setup_plugin() {
     echo "====================="
     echo ""
 
+    # Always install/update helper scripts (idempotent)
+    _install_autoswitch_helper
+    _install_profile_helper
+    echo "Helper scripts installed."
+
     local has_statusline=false
     if [ -f "$claude_settings" ]; then
         if jq -e '.statusLine' "$claude_settings" >/dev/null 2>&1; then
@@ -133,14 +251,15 @@ cmd_setup_plugin() {
     if [ "$has_statusline" = false ]; then
         echo "No status line configured. Creating one..."
 
-        _install_profile_helper
-
         cat > "$statusline_script" <<STATUSLINE
 #!/bin/sh
 input=\$(cat)
 
 # claude-switcher: capture rate limits
 printf '%s' "\$input" | jq '{five_hour:.rate_limits.five_hour,seven_day:.rate_limits.seven_day}' > ~/.claude-switcher/rate-limits.json 2>/dev/null || true
+
+# claude-switcher: auto-switch
+. ${SWITCHER_DIR}/statusline-autoswitch.sh
 
 # claude-switcher: profile indicator
 . ${SWITCHER_DIR}/statusline-profile.sh
@@ -178,81 +297,108 @@ STATUSLINE
         esac
 
         if [ -z "$script_path" ] || [ ! -f "$script_path" ]; then
-            die "could not find status line script at '$script_path'. Check your statusLine config in $claude_settings"
-        fi
-
-        if grep -q "$STATUSLINE_SNIPPET_MARKER" "$script_path" 2>/dev/null; then
-            echo "Rate limit capture already configured in $script_path"
+            echo "warning: could not find status line script at '$script_path'." >&2
+            echo "  Check your statusLine config in $claude_settings" >&2
+            echo "  Rate limit capture and auto-switch may not work." >&2
         else
-            echo "Injecting rate limit capture into $script_path..."
-
-            local inject_after=""
-            if grep -q 'input=$(cat)' "$script_path"; then
-                inject_after='input=$(cat)'
-            elif grep -q '_stdin=$(cat)' "$script_path"; then
-                inject_after='_stdin=$(cat)'
-            fi
-
-            if [ -z "$inject_after" ]; then
-                die "could not find stdin read line in $script_path. Add manually after the line that reads stdin."
-            fi
-
-            local tmp
-            tmp=$(mktemp "${script_path}.XXXXXX")
-            awk -v marker="$STATUSLINE_SNIPPET_MARKER" -v target="$inject_after" '
-            {
-                print
-                if ($0 == target) {
-                    print ""
-                    print marker
-                    print "printf '\''%s'\'' \"$input\" | jq '\''{five_hour:.rate_limits.five_hour,seven_day:.rate_limits.seven_day}'\'' > ~/.claude-switcher/rate-limits.json 2>/dev/null || true"
-                }
-            }' "$script_path" > "$tmp" && mv "$tmp" "$script_path"
-            chmod +x "$script_path"
-            echo "Injected rate limit capture after '${inject_after}'"
-        fi
-
-        # Create/update the profile indicator helper script
-        _install_profile_helper
-
-        if grep -q "$STATUSLINE_PROFILE_MARKER" "$script_path" 2>/dev/null; then
-            echo "Profile indicator already configured in $script_path"
-        else
-            echo "Injecting profile indicator into $script_path..."
-
-            local tmp
-            tmp=$(mktemp "${script_path}.XXXXXX")
-            awk -v marker="$STATUSLINE_SNIPPET_MARKER" -v profile_marker="$STATUSLINE_PROFILE_MARKER" -v helper="$SWITCHER_DIR/statusline-profile.sh" '
-            {
-                print
-                if (index($0, marker) && !done) {
-                    getline; print
-                    print ""
-                    print profile_marker
-                    print ". " helper
-                    done = 1
-                }
-            }' "$script_path" > "$tmp" && mv "$tmp" "$script_path"
-            chmod +x "$script_path"
-            echo "Injected profile indicator."
-            echo "NOTE: To display the profile in your status line, add \${_cs_indicator}"
-            echo "  to your output (e.g. echo \"\${_cs_indicator}\${your_output}\")"
+            _inject_into_statusline "$script_path"
         fi
     fi
 
     echo ""
-    echo "Rate limit data will be captured to: $RATE_LIMITS_FILE"
-    echo "The status line updates this file continuously."
+    echo "Setup complete. Auto-switch runs via the status line."
     echo ""
-    echo "Next steps:"
-    echo "  1. Save your profiles (if not done already)"
-    echo "  2. Configure auto-switch:"
-    local script_dir
-    script_dir=$(dirname "$0")
-    echo "     ${script_dir}/claude-switcher.sh auto-config enable"
-    echo "     ${script_dir}/claude-switcher.sh auto-config primary work"
-    echo "     ${script_dir}/claude-switcher.sh auto-config fallback personal"
-    echo "     ${script_dir}/claude-switcher.sh auto-config threshold 97"
+    echo "Next steps (if not done already):"
+    echo "  1. Save profiles: /save <name>"
+    echo "  2. Enable auto-switch:"
+    echo "     /auto-config enable"
+    echo "     /auto-config primary <name>"
+    echo "     /auto-config fallback <name>"
+    echo "     /auto-config threshold 97"
+    echo "  3. Show profile in status line (optional):"
+    echo "     /auto-config show-profile enable"
+}
+
+_inject_into_statusline() {
+    local script_path="$1"
+
+    # 1. Rate limit capture
+    if grep -q "$STATUSLINE_SNIPPET_MARKER" "$script_path" 2>/dev/null; then
+        echo "Rate limit capture: already configured"
+    else
+        echo "Injecting rate limit capture..."
+
+        local inject_after=""
+        if grep -q 'input=$(cat)' "$script_path"; then
+            inject_after='input=$(cat)'
+        elif grep -q '_stdin=$(cat)' "$script_path"; then
+            inject_after='_stdin=$(cat)'
+        fi
+
+        if [ -z "$inject_after" ]; then
+            echo "warning: could not find stdin read line in $script_path." >&2
+            echo "  Add manually after the line that reads stdin." >&2
+            return 0
+        fi
+
+        local tmp
+        tmp=$(mktemp "${script_path}.XXXXXX")
+        awk -v marker="$STATUSLINE_SNIPPET_MARKER" -v target="$inject_after" '
+        {
+            print
+            if ($0 == target) {
+                print ""
+                print marker
+                print "printf '\''%s'\'' \"$input\" | jq '\''{five_hour:.rate_limits.five_hour,seven_day:.rate_limits.seven_day}'\'' > ~/.claude-switcher/rate-limits.json 2>/dev/null || true"
+            }
+        }' "$script_path" > "$tmp" && mv "$tmp" "$script_path"
+        chmod +x "$script_path"
+        echo "Rate limit capture: injected"
+    fi
+
+    # 2. Auto-switch helper
+    if grep -q "$STATUSLINE_AUTOSWITCH_MARKER" "$script_path" 2>/dev/null; then
+        echo "Auto-switch: already configured"
+    else
+        echo "Injecting auto-switch..."
+        local tmp
+        tmp=$(mktemp "${script_path}.XXXXXX")
+        awk -v marker="$STATUSLINE_SNIPPET_MARKER" -v as_marker="$STATUSLINE_AUTOSWITCH_MARKER" -v helper="$SWITCHER_DIR/statusline-autoswitch.sh" '
+        {
+            print
+            if (index($0, marker) && !done_as) {
+                getline; print
+                print ""
+                print as_marker
+                print ". " helper
+                done_as = 1
+            }
+        }' "$script_path" > "$tmp" && mv "$tmp" "$script_path"
+        chmod +x "$script_path"
+        echo "Auto-switch: injected"
+    fi
+
+    # 3. Profile indicator
+    if grep -q "$STATUSLINE_PROFILE_MARKER" "$script_path" 2>/dev/null; then
+        echo "Profile indicator: already configured"
+    else
+        echo "Injecting profile indicator..."
+        local tmp
+        tmp=$(mktemp "${script_path}.XXXXXX")
+        awk -v marker="$STATUSLINE_AUTOSWITCH_MARKER" -v profile_marker="$STATUSLINE_PROFILE_MARKER" -v helper="$SWITCHER_DIR/statusline-profile.sh" '
+        {
+            print
+            if (index($0, marker) && !done_pi) {
+                getline; print
+                print ""
+                print profile_marker
+                print ". " helper
+                done_pi = 1
+            }
+        }' "$script_path" > "$tmp" && mv "$tmp" "$script_path"
+        chmod +x "$script_path"
+        echo "Profile indicator: injected"
+    fi
 }
 
 cmd_uninstall() {

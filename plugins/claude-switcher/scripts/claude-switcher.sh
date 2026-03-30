@@ -42,13 +42,14 @@ Commands:
   setup                     Interactive first-time setup
 
 Auto-switch:
-  setup-plugin              Set up rate limit capture in status line
+  setup-plugin              Set up auto-switch in status line
   auto-config [subcmd]      Configure auto-switching
     show                    Show config, rate limits, and state
     enable / disable        Toggle auto-switching
     primary <name>          Set primary (preferred) profile
     fallback <name>         Add a fallback profile
     threshold <percent>     Set preemptive switch % (default: 97)
+    show-profile on/off     Toggle profile indicator in status line
     reset-state             Clear auto-switch state
   limit-hit                 Manually trigger fallback switch
 

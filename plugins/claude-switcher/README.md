@@ -24,7 +24,7 @@ That's it. On first load, the plugin checks prerequisites and creates a CLI syml
 
 Everything is done through slash commands inside Claude Code:
 
-1. `/setup` — inject rate limit capture into status line
+1. `/setup` — inject rate limit capture and auto-switch into status line
 2. `/save work` — save your current logged-in account
 3. Log in to the other account: `! claude auth logout && claude auth login`
 4. `/save personal` — save the second account
@@ -44,17 +44,18 @@ Once installed as a plugin, use these in Claude Code sessions:
 | `/switch <name>` | Switch to a profile |
 | `/switch prev` | Switch to previous profile |
 | `/profiles` | List all profiles |
+| `/cli <command>` | Run any CLI command (status, show, delete, rename, etc.) |
 | `/limit-hit` | Manually trigger fallback (rate limit) |
 | `/auto-config` | View/edit auto-switch configuration |
-| `/setup` | Set up rate limit capture in status line |
+| `/setup` | Set up rate limit capture and auto-switch in status line |
 
 ## Auto-Switch
 
 When enabled, claude-switcher automatically manages account switching:
 
-1. **Preemptive**: A `PostToolUse` hook reads real rate limit data (captured from the status line) and switches at a configurable threshold (default 97%) BEFORE hitting the actual limit
-2. **On rate limit**: A `StopFailure` hook detects actual rate limit errors as a safety net
-3. **On reset**: A `SessionStart` hook checks if the primary account's limit has reset and switches back
+1. **Status line driven**: The status line script reads real rate limit data on every render and switches at a configurable threshold (default 97%) BEFORE hitting the actual limit
+2. **On rate limit error**: A `StopFailure` hook detects actual rate limit API errors as a safety net
+3. **On reset**: The status line checks if the primary account's limit has reset and switches back automatically
 4. **Manual**: Use `/limit-hit` if auto-detection misses a rate limit
 
 ### Configuration
@@ -69,11 +70,12 @@ All configuration is done via the `/auto-config` slash command:
 | `/auto-config primary work` | Set primary profile |
 | `/auto-config fallback personal` | Add fallback profile |
 | `/auto-config threshold 97` | Switch at 97% real usage |
+| `/auto-config show-profile enable` | Show profile name in status line |
 | `/auto-config reset-state` | Clear auto-switch state |
 
 ## CLI Reference
 
-All commands are also available via the script directly:
+All commands are also available via `/cli <command>` or the script directly:
 
 ```
 ~/.claude-switcher/cli <command> [options]
@@ -105,13 +107,13 @@ Other:
 
 **Rate limit capture**: The `/setup` command injects a snippet into your Claude Code status line script. The status line receives real rate limit data from Claude Code (five_hour and seven_day percentages) on every refresh, and the snippet writes this to `~/.claude-switcher/rate-limits.json`.
 
-**Profile indicator**: The `/setup` command also injects a profile indicator into the status line, showing the active profile name at all times. When on a fallback profile, it shows `[profile FALLBACK]` for clear visibility.
+**Auto-switching (status line driven)**: The status line also sources an auto-switch helper that compares the fresh rate limit data against the configured threshold. When either the 5-hour or 7-day usage exceeds the threshold, it spawns an async CLI call to switch to the fallback profile. This is faster and fresher than hook-based switching.
 
-**Preemptive switching**: The `PostToolUse` hook (async, non-blocking) reads the captured rate limit data after every tool call. When either the 5-hour or 7-day usage exceeds the configured threshold, it switches to the fallback before hitting the actual limit.
+**Profile indicator**: When enabled via `/auto-config show-profile enable`, the status line shows the active profile name. When on a fallback profile, it shows `[profile FALLBACK]` for clear visibility.
 
-**Rate limit detection**: The `StopFailure` hook serves as a safety net. It analyzes errors for rate-limit patterns and switches if the preemptive system missed.
+**Rate limit error detection**: The `StopFailure` hook serves as a safety net. It analyzes actual API errors for rate-limit patterns and switches if the preemptive system missed.
 
-**Dynamic switch-back**: The `SessionStart` and `PostToolUse` hooks check if the primary account's rate limits have actually reset (using real `resets_at` timestamps from Claude Code). When the reset time passes, it auto-switches back -- no static daily/weekly times needed.
+**Dynamic switch-back**: The status line helper checks if the primary account's rate limits have actually reset (using real `resets_at` timestamps from Claude Code). When the reset time passes, it auto-switches back -- no static daily/weekly times needed.
 
 ## Security
 

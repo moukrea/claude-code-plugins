@@ -3,7 +3,7 @@
 # Sourced by the main entry point -- not executed directly
 # shellcheck disable=SC2034
 
-VERSION="2.2.0"
+VERSION="3.0.0"
 
 CLAUDE_DIR="${HOME}/.claude"
 CLAUDE_CREDS="${CLAUDE_DIR}/.credentials.json"

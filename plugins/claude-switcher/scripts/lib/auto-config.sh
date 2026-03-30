@@ -26,6 +26,10 @@ cmd_auto_config() {
             echo "  Fallbacks:      ${fallbacks:-(none)}"
             echo "  Threshold:      ${threshold:-97}%"
 
+            local show_sl
+            show_sl=$(get_auto_config_value "show_in_statusline")
+            echo "  Status line:    ${show_sl:-false}"
+
             echo ""
             echo "  Rate limits:    $(format_rate_limits)"
 
@@ -93,12 +97,31 @@ cmd_auto_config() {
             set_auto_config_value "preemptive_switch_percent" "$pct"
             echo "Preemptive switch threshold set to ${pct}%"
             ;;
+        show-profile)
+            local action="${1:-}"
+            case "$action" in
+                enable)
+                    set_auto_config_value "show_in_statusline" "true"
+                    echo "Profile indicator enabled in status line."
+                    ;;
+                disable)
+                    set_auto_config_value "show_in_statusline" "false"
+                    echo "Profile indicator disabled in status line."
+                    ;;
+                *)
+                    local current
+                    current=$(get_auto_config_value "show_in_statusline")
+                    echo "Profile indicator in status line: ${current:-false}"
+                    echo "  Usage: auto-config show-profile enable|disable"
+                    ;;
+            esac
+            ;;
         reset-state)
             clear_auto_switch_state
             echo "Auto-switch state cleared."
             ;;
         *)
-            die "unknown auto-config subcommand: $subcmd. Use: show, enable, disable, primary, fallback, threshold, reset-state"
+            die "unknown auto-config subcommand: $subcmd. Use: show, enable, disable, primary, fallback, threshold, show-profile, reset-state"
             ;;
     esac
 }
