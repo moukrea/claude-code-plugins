@@ -18,11 +18,11 @@
 - Setup is mostly idempotent but dies if status line script missing
 
 ### Build
-- [ ] Create statusline-autoswitch.sh helper (threshold check + switch-back + mismatch detection)
-- [ ] Remove PostToolUse hook and on-post-tool-use.sh
-- [ ] Simplify SessionStart hook (info display only)
-- [ ] Make profile indicator opt-in (show_in_statusline config key)
-- [ ] Create /cli slash command
-- [ ] Make setup fully idempotent
-- [ ] Update setup.sh injection for autoswitch helper
-- [ ] Update docs and bump to 3.0.0
+- [x] Create statusline-autoswitch.sh helper (threshold check + switch-back + mismatch detection)
+- [x] Remove PostToolUse hook and on-post-tool-use.sh
+- [x] Simplify SessionStart hook (info display only)
+- [x] Make profile indicator opt-in (show_in_statusline config key)
+- [x] Create /cli slash command (commands/cli.md)
+- [x] Make setup fully idempotent (helpers always installed, warning not die on missing script)
+- [x] Update setup.sh injection for autoswitch helper (3-stage: rate limits, autoswitch, profile)
+- [x] Update docs, README, auto-config.md, help text, bump to 3.0.0
