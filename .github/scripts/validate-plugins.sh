@@ -27,8 +27,7 @@ echo "marketplace.json is valid."
 
 echo "Validating plugin directories..."
 
-for PLUGIN_DIR in plugins/*/; do
-  PLUGIN=$(basename "$PLUGIN_DIR")
+for PLUGIN in $(jq -r '.plugins[].name' .claude-plugin/marketplace.json); do
   echo "  Checking plugin: $PLUGIN"
 
   # Verify valid JSON

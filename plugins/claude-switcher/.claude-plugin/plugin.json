@@ -1,0 +1,12 @@
+{
+  "name": "claude-switcher",
+  "version": "2.0.0",
+  "description": "Switch between multiple Claude Code accounts instantly by swapping credential profiles",
+  "author": {
+    "name": "Emeric Commenge"
+  },
+  "license": "MIT",
+  "keywords": ["auth", "account", "switch", "profile", "credentials"],
+  "hooks": "./hooks/hooks.json",
+  "commands": "./commands/"
+}

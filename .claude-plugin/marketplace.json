@@ -28,6 +28,26 @@
         "authentication"
       ],
       "category": "security"
+    },
+    {
+      "name": "claude-switcher",
+      "source": "./plugins/claude-switcher",
+      "description": "Switch between multiple Claude Code accounts instantly by swapping credential profiles",
+      "version": "2.0.0",
+      "author": {
+        "name": "moukrea"
+      },
+      "homepage": "https://github.com/moukrea/claude-code-plugins",
+      "repository": "https://github.com/moukrea/claude-code-plugins",
+      "license": "MIT",
+      "keywords": [
+        "auth",
+        "account",
+        "switch",
+        "profile",
+        "credentials"
+      ],
+      "category": "productivity"
     }
   ]
 }
