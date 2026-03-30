@@ -43,3 +43,43 @@ The auto-switch system currently uses static daily/weekly reset times (e.g., "15
 7. **Update command docs** (`commands/auto-config.md`):
    - Remove daily-reset/weekly-reset docs
    - Document new dynamic reset behavior
+
+## Iteration — 2026-03-30 (Auto-switch fixes + /who command)
+
+### Context
+Auto-switching doesn't actually work in practice. The user reports that profiles don't switch automatically when rate limit thresholds are reached. Additionally, there's no easy way to see which profile is active from within Claude Code.
+
+### Root Causes Found
+
+1. **StopFailure hook matcher too restrictive** (`hooks/hooks.json`):
+   - `"matcher": "rate_limit"` only fires if Claude Code's stop failure reason exactly matches. If the reason string is different (e.g. "overloaded", "rate_limited", "429"), the hook never fires.
+   - The `on-stop-failure.sh` script already has robust detection (checking `.error`, `.error_type`, `.message` fields + transcript grep for rate_limit/429/overloaded/etc).
+   - Fix: Remove the matcher — let the hook fire for all stop failures, rely on the script's own detection.
+
+2. **No notification when auto-switch happens**:
+   - StopFailure hook output is ignored by Claude Code (by design).
+   - PostToolUse hook is async, output also ignored.
+   - The credential swap happens silently on disk. The current session keeps using old (rate-limited) credentials.
+   - Fix: Add profile indicator + fallback alert to the status line, which the user sees constantly.
+
+3. **No way to check current profile from Claude Code**:
+   - No slash command exists to quickly show which profile is active.
+   - `/profiles` exists but shows a full table — user wants a quick answer.
+   - Fix: Add `/who` slash command.
+
+### Changes Required
+
+1. **Remove StopFailure matcher** (`hooks/hooks.json`):
+   - Remove `"matcher": "rate_limit"` from the StopFailure hook entry.
+
+2. **Add profile indicator to status line** (`scripts/lib/setup.sh`):
+   - Extend the statusline injection snippet to read `~/.claude-switcher/config.json` and display the active profile name.
+   - When `auto-switch-state.json` has `on_fallback: true`, show a prominent fallback alert.
+   - Update both the "create new" and "inject into existing" paths in `cmd_setup_plugin()`.
+
+3. **Create `/who` slash command** (`commands/who.md`):
+   - New command that runs `claude-switcher status` or a simplified version showing: profile name, email, subscription, rate limits.
+
+4. **Improve auto-switch notification** (`scripts/on-stop-failure.sh`, status line):
+   - The status line checks for auto-switch state on every render.
+   - Shows "[profile] ⚡ FALLBACK" or similar when on fallback profile.
