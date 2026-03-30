@@ -1,20 +1,34 @@
 {
-  "hooks": [
+  "SessionStart": [
     {
-      "event": "SessionStart",
-      "type": "command",
-      "command": "$CLAUDE_PLUGIN_ROOT/scripts/session-start.sh"
-    },
+      "hooks": [
+        {
+          "type": "command",
+          "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-start.sh"
+        }
+      ]
+    }
+  ],
+  "PostToolUse": [
     {
-      "event": "PostToolUse",
-      "type": "command",
-      "command": "$CLAUDE_PLUGIN_ROOT/scripts/on-post-tool-use.sh",
-      "async": true
-    },
+      "hooks": [
+        {
+          "type": "command",
+          "command": "${CLAUDE_PLUGIN_ROOT}/scripts/on-post-tool-use.sh",
+          "async": true
+        }
+      ]
+    }
+  ],
+  "StopFailure": [
     {
-      "event": "StopFailure",
-      "type": "command",
-      "command": "$CLAUDE_PLUGIN_ROOT/scripts/on-stop-failure.sh"
+      "matcher": "rate_limit",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "${CLAUDE_PLUGIN_ROOT}/scripts/on-stop-failure.sh"
+        }
+      ]
     }
   ]
 }
