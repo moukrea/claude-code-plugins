@@ -21,7 +21,9 @@
 - No existing /who command — only /profiles (full table) and /switch
 
 ### Build
-- [ ] Remove StopFailure matcher from hooks.json
-- [ ] Add profile indicator to status line injection (setup.sh)
-- [ ] Create /who slash command (commands/who.md)
-- [ ] Add fallback alert to status line when on_fallback is true
+- [x] Remove StopFailure matcher from hooks.json
+- [x] Add profile indicator to status line injection (setup.sh) + helper script approach
+- [x] Create /who slash command (commands/who.md)
+- [x] Add fallback alert to status line when on_fallback is true (via profile helper)
+- [x] Update user's live statusline-command.sh with profile indicator
+- [x] Bump version to 2.2.0
