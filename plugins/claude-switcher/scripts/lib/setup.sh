@@ -3,6 +3,7 @@
 # Sourced by the main entry point -- not executed directly
 
 STATUSLINE_SNIPPET_MARKER="# claude-switcher: capture rate limits"
+STATUSLINE_PROFILE_MARKER="# claude-switcher: profile indicator"
 
 cmd_setup() {
     echo "claude-switcher setup"
@@ -94,6 +95,24 @@ cmd_setup() {
     echo "Setup complete. Switch anytime with: claude-switcher use <name>"
 }
 
+_install_profile_helper() {
+    local helper_path="${SWITCHER_DIR}/statusline-profile.sh"
+    cat > "$helper_path" <<'HELPER'
+# claude-switcher: profile indicator helper
+# Sourced by the status line script to set $_cs_indicator
+_cs_profile=$(jq -r '.active_profile // empty' ~/.claude-switcher/config.json 2>/dev/null)
+_cs_indicator=""
+if [ -n "$_cs_profile" ]; then
+    if [ -f ~/.claude-switcher/auto-switch-state.json ] && [ "$(jq -r '.on_fallback // false' ~/.claude-switcher/auto-switch-state.json 2>/dev/null)" = "true" ]; then
+        _cs_indicator="[${_cs_profile} FALLBACK] "
+    else
+        _cs_indicator="[${_cs_profile}] "
+    fi
+fi
+HELPER
+    chmod 644 "$helper_path"
+}
+
 cmd_setup_plugin() {
     local claude_settings="${CLAUDE_DIR}/settings.json"
     local statusline_script="${CLAUDE_DIR}/statusline-command.sh"
@@ -114,18 +133,23 @@ cmd_setup_plugin() {
     if [ "$has_statusline" = false ]; then
         echo "No status line configured. Creating one..."
 
-        cat > "$statusline_script" <<'STATUSLINE'
+        _install_profile_helper
+
+        cat > "$statusline_script" <<STATUSLINE
 #!/bin/sh
-input=$(cat)
+input=\$(cat)
 
 # claude-switcher: capture rate limits
-printf '%s' "$input" | jq '{five_hour:.rate_limits.five_hour,seven_day:.rate_limits.seven_day}' > ~/.claude-switcher/rate-limits.json 2>/dev/null || true
+printf '%s' "\$input" | jq '{five_hour:.rate_limits.five_hour,seven_day:.rate_limits.seven_day}' > ~/.claude-switcher/rate-limits.json 2>/dev/null || true
 
-cwd=$(echo "$input" | jq -r '.cwd // empty')
-model=$(echo "$input" | jq -r '.model.display_name // .model.id // "unknown"')
-short_dir="${cwd#"${HOME}"}"
-[ "$short_dir" != "$cwd" ] && short_dir="~${short_dir}"
-echo "${short_dir} | ${model}"
+# claude-switcher: profile indicator
+. ${SWITCHER_DIR}/statusline-profile.sh
+
+cwd=\$(echo "\$input" | jq -r '.cwd // empty')
+model=\$(echo "\$input" | jq -r '.model.display_name // .model.id // "unknown"')
+short_dir="\${cwd#"\${HOME}"}"
+[ "\$short_dir" != "\$cwd" ] && short_dir="~\${short_dir}"
+echo "\${_cs_indicator}\${short_dir} | \${model}"
 STATUSLINE
         chmod +x "$statusline_script"
 
@@ -186,6 +210,33 @@ STATUSLINE
             }' "$script_path" > "$tmp" && mv "$tmp" "$script_path"
             chmod +x "$script_path"
             echo "Injected rate limit capture after '${inject_after}'"
+        fi
+
+        # Create/update the profile indicator helper script
+        _install_profile_helper
+
+        if grep -q "$STATUSLINE_PROFILE_MARKER" "$script_path" 2>/dev/null; then
+            echo "Profile indicator already configured in $script_path"
+        else
+            echo "Injecting profile indicator into $script_path..."
+
+            local tmp
+            tmp=$(mktemp "${script_path}.XXXXXX")
+            awk -v marker="$STATUSLINE_SNIPPET_MARKER" -v profile_marker="$STATUSLINE_PROFILE_MARKER" -v helper="$SWITCHER_DIR/statusline-profile.sh" '
+            {
+                print
+                if (index($0, marker) && !done) {
+                    getline; print
+                    print ""
+                    print profile_marker
+                    print ". " helper
+                    done = 1
+                }
+            }' "$script_path" > "$tmp" && mv "$tmp" "$script_path"
+            chmod +x "$script_path"
+            echo "Injected profile indicator."
+            echo "NOTE: To display the profile in your status line, add \${_cs_indicator}"
+            echo "  to your output (e.g. echo \"\${_cs_indicator}\${your_output}\")"
         fi
     fi
 

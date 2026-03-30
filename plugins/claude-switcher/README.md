@@ -39,6 +39,7 @@ Once installed as a plugin, use these in Claude Code sessions:
 
 | Command | Description |
 |---------|-------------|
+| `/who` | Show current active profile |
 | `/save <name>` | Save current account as a named profile |
 | `/switch <name>` | Switch to a profile |
 | `/switch prev` | Switch to previous profile |
@@ -103,6 +104,8 @@ Other:
 **Profile switching**: Copies OAuth tokens from `~/.claude-switcher/profiles/<name>/` back to `~/.claude/.credentials.json` and surgically updates only the `oauthAccount` key in `~/.claude.json`.
 
 **Rate limit capture**: The `/setup` command injects a snippet into your Claude Code status line script. The status line receives real rate limit data from Claude Code (five_hour and seven_day percentages) on every refresh, and the snippet writes this to `~/.claude-switcher/rate-limits.json`.
+
+**Profile indicator**: The `/setup` command also injects a profile indicator into the status line, showing the active profile name at all times. When on a fallback profile, it shows `[profile FALLBACK]` for clear visibility.
 
 **Preemptive switching**: The `PostToolUse` hook (async, non-blocking) reads the captured rate limit data after every tool call. When either the 5-hour or 7-day usage exceeds the configured threshold, it switches to the fallback before hitting the actual limit.
 
