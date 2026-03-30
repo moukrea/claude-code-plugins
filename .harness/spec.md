@@ -83,3 +83,60 @@ Auto-switching doesn't actually work in practice. The user reports that profiles
 4. **Improve auto-switch notification** (`scripts/on-stop-failure.sh`, status line):
    - The status line checks for auto-switch state on every render.
    - Shows "[profile] ⚡ FALLBACK" or similar when on fallback profile.
+
+## Iteration — 2026-03-30 (Architectural simplification: status-line-driven auto-switch)
+
+### Context
+The status line script already runs on every Claude Code render and receives the freshest rate limit data directly from the input JSON. The PostToolUse hook is redundant — it reads stale data from a file that the status line just wrote. The SessionStart hook duplicates logic the status line can do continuously. The architecture should be simplified: let the status line drive auto-switching, keep only StopFailure as a safety net, and make the profile indicator opt-in. Additionally, a generic `/cli` slash command should give access to all CLI operations, and setup should be fully idempotent.
+
+### Architecture Decision
+- **Status line**: Already has fresh rate limit data on every render. Move threshold checking and switch-back logic here. Spawn CLI calls asynchronously (with `&`) to avoid blocking renders.
+- **PostToolUse hook**: REMOVE entirely. Redundant — status line checks more frequently.
+- **SessionStart hook**: SIMPLIFY to info display only. Profile mismatch detection and switch-back move to status line.
+- **StopFailure hook**: KEEP as safety net for actual API rate limit errors.
+
+### Changes Required
+
+1. **Create `~/.claude-switcher/statusline-autoswitch.sh` helper** (`scripts/lib/setup.sh`):
+   - New sourceable helper that:
+     - Reads rate limit percentages directly from the `$input` JSON (not from file)
+     - Reads auto-switch config (enabled, threshold, primary, fallbacks)
+     - If not on fallback and usage >= threshold: spawns `~/.claude-switcher/cli check-limits &`
+     - If on fallback and now >= switch_back_at: spawns `~/.claude-switcher/cli auto-config reset-state && ~/.claude-switcher/cli use <original> &`
+     - Detects profile mismatch (live email vs tracked profile) and auto-corrects
+   - Script must be fast: pure comparisons, async spawns for actual switching
+   - `_install_autoswitch_helper()` function in setup.sh creates this file
+
+2. **Remove PostToolUse hook** (`hooks/hooks.json`, `scripts/on-post-tool-use.sh`):
+   - Remove PostToolUse entry from hooks.json
+   - Delete `on-post-tool-use.sh`
+
+3. **Simplify SessionStart hook** (`scripts/session-start.sh`):
+   - Remove profile mismatch detection (moved to status line helper)
+   - Remove switch-back logic (moved to status line helper)
+   - Keep: info display (profile name, email, subscription, rate limits, fallback status)
+
+4. **Make profile indicator opt-in** (`statusline-profile.sh`, `auto-config.sh`):
+   - Add `show_in_statusline` config key (default: `false`)
+   - `statusline-profile.sh` reads this flag; if false, sets `_cs_indicator=""`
+   - Add `/auto-config show-profile enable/disable` subcommand
+   - `/setup` should ask or mention this config option
+
+5. **Create `/cli` slash command** (`commands/cli.md`):
+   - Generic passthrough: `~/.claude-switcher/cli $ARGUMENTS`
+   - Works for any CLI command: `/cli status`, `/cli show work`, `/cli rename old new`, etc.
+
+6. **Make setup fully idempotent** (`scripts/lib/setup.sh`):
+   - `cmd_setup_plugin()`: Already mostly idempotent (checks markers). Fix: don't die if script not found — create it.
+   - Install both helpers (profile + autoswitch) on every run
+   - Re-running must be safe and produce the same result
+
+7. **Update setup.sh injection** for autoswitch helper:
+   - Both "create new" and "inject into existing" paths must source `statusline-autoswitch.sh`
+   - Inject after the rate limit capture line, before profile indicator
+   - Autoswitch helper needs access to `$input` (the raw JSON from stdin)
+
+8. **Update docs and version**:
+   - Update README to reflect simplified architecture
+   - Update auto-config.md with new show-profile subcommand
+   - Bump version to 3.0.0 (breaking: removes PostToolUse hook, adds config key)

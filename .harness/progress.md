@@ -1,29 +1,28 @@
 # Progress — claude-switcher Iterations
 
 ## Iteration 1: Dynamic Rate Limit Reset Tracking (2026-03-30)
-- [x] Fix field name bug in rate-limits.sh and session-start.sh (.percent → .used_percentage)
-- [x] Add per-profile rate limit saving (save_rate_limits_for_active_profile)
-- [x] Rewrite auto-state.sh for dynamic resets_at tracking (primary_resets_at + switch_back_at)
-- [x] Add switch-back check in check-limits flow (check_primary_reset_and_switch_back)
-- [x] Remove deprecated config options from auto-config.sh (daily-reset, weekly-reset)
-- [x] Update session-start.sh for new state format (switch_back_at instead of next_reset)
-- [x] Update command docs (auto-config.md, help text, completions checked)
+- [x] All 7 items complete
 
 ## Iteration 2: Fix Auto-Switch + /who Command (2026-03-30)
+- [x] All 6 items complete
+
+## Iteration 3: Status-Line-Driven Auto-Switch (2026-03-30)
 
 ### Investigation
-- Traced full auto-switch flow: PostToolUse → check-limits → do_auto_switch_to_fallback
-- Traced StopFailure flow: on-stop-failure.sh → limit-hit → do_auto_switch_to_fallback
-- Found StopFailure matcher "rate_limit" is too restrictive — may not match actual Claude Code error types
-- Found no notification mechanism — StopFailure output is ignored, PostToolUse is async
-- Confirmed rate-limits.json IS being populated by statusline capture (7%, 65% currently)
-- Confirmed auto-switch config is correct (enabled, primary=work, fallback=personal, threshold=97%)
-- No existing /who command — only /profiles (full table) and /switch
+- Status line runs on every render, has freshest rate limit data from input JSON
+- PostToolUse hook is redundant: reads stale file written by status line
+- SessionStart hook duplicates switch-back + mismatch detection that status line can do
+- StopFailure hook must stay: status line can't see API errors
+- Profile indicator is always-on, should be opt-in
+- No generic `/cli` command for full CLI access
+- Setup is mostly idempotent but dies if status line script missing
 
 ### Build
-- [x] Remove StopFailure matcher from hooks.json
-- [x] Add profile indicator to status line injection (setup.sh) + helper script approach
-- [x] Create /who slash command (commands/who.md)
-- [x] Add fallback alert to status line when on_fallback is true (via profile helper)
-- [x] Update user's live statusline-command.sh with profile indicator
-- [x] Bump version to 2.2.0
+- [ ] Create statusline-autoswitch.sh helper (threshold check + switch-back + mismatch detection)
+- [ ] Remove PostToolUse hook and on-post-tool-use.sh
+- [ ] Simplify SessionStart hook (info display only)
+- [ ] Make profile indicator opt-in (show_in_statusline config key)
+- [ ] Create /cli slash command
+- [ ] Make setup fully idempotent
+- [ ] Update setup.sh injection for autoswitch helper
+- [ ] Update docs and bump to 3.0.0

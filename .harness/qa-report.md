@@ -1,78 +1,67 @@
-# QA Report — Round 2
+# QA Report -- Round 2
 
 ## Verdict: PASS
 
 ## Scores
-- **Product Depth**: 9/10 (threshold: 6) — All 7 spec items fully implemented with migration logic, edge case handling, and consistent patterns across all files
-- **Functionality**: 9/10 (threshold: 7) — Every tested flow works correctly: preemptive switching, switch-back via check-limits and session-start, per-profile rate limit saving, config migration, deprecated command rejection
-- **Visual Design**: N/A — CLI tool
-- **Code Quality**: 8/10 (threshold: 5) — Well-structured library modules, atomic writes with temp files, proper error handling, consistent use of jq, good separation of concerns
+- **Product Depth**: 9/10 (threshold: 6) -- All iteration 2 features fully implemented with thoughtful edge case handling (missing config, missing state file).
+- **Functionality**: 9/10 (threshold: 7) -- Every feature works correctly when tested with real inputs including edge cases. No bugs found.
+- **Visual Design**: N/A (CLI tool)
+- **Code Quality**: 8/10 (threshold: 5) -- Clean, consistent shell code. Proper quoting, heredoc usage, error suppression with 2>/dev/null. Good separation of concerns with the helper script pattern.
 
 ## Tests Performed
 
-All tests run against the real CLI (`plugins/claude-switcher/scripts/claude-switcher.sh`) using isolated `$HOME` directories with simulated Claude auth state.
+### hooks.json validation
+- Validated JSON with `jq .` -- valid
+- Confirmed StopFailure hook entry exists with no `matcher` field at either the event level or individual hook level
+- Verified all three hook types (SessionStart, PostToolUse, StopFailure) use correct schema: array of objects with `hooks` arrays
 
-### Code Verification
-1. Grepped entire plugin for `next_reset` — 0 matches (confirmed removed)
-2. Grepped entire plugin for `.percent` (without `age` suffix) — 0 matches (confirmed fixed)
-3. Grepped for `daily-reset` and `weekly-reset` across all files — 0 matches except migration code in auto-state.sh (correct)
-4. Verified `used_percentage` appears in exactly 4 correct locations: rate-limits.sh:7, rate-limits.sh:15, session-start.sh:122, session-start.sh:123
+### on-stop-failure.sh rate limit detection
+- Syntax check: `bash -n` passes
+- Tested with non-rate-limit error (`{"error": "some random error"}`) -- exits silently (correct)
+- Tested with `rate_limit` string -- triggers fallback switch (correct)
+- Tested with `429 Too Many Requests` -- triggers fallback switch (correct)
+- Tested with `server overloaded` -- triggers fallback switch (correct)
+- Script correctly reads from stdin, checks auto-switch config, and only proceeds for rate-limit-like errors
 
-### CLI Functional Tests
-5. `help` — shows usage, no deprecated commands mentioned
-6. `save work --force` — saves profile with correct metadata
-7. `save personal --force` — saves second profile
-8. `list` — shows both profiles with correct metadata
-9. `use work` — switches credentials (verified token changed in .credentials.json)
-10. `auto-config enable` / `disable` — toggles correctly
-11. `auto-config primary work` — sets primary profile
-12. `auto-config fallback personal` — adds fallback profile
-13. `auto-config threshold 95` — sets threshold
-14. `auto-config show` — displays all config including rate limits and resets_at timestamps
-15. `auto-config daily-reset` — correctly rejected as unknown subcommand
-16. `auto-config weekly-reset` — correctly rejected as unknown subcommand
+### commands/who.md
+- Validated frontmatter: has `name: who`, `description`, `allowed-tools: Bash`
+- Compared with other command files -- follows same pattern (no argument-hint needed since it takes no args)
+- Verified the CLI path `~/.claude-switcher/cli status` resolves via symlink to the correct script
+- Ran the command -- outputs profile name, email, subscription, rate limits, and fallback status
 
-### Rate Limit Reading (Spec Item 1)
-17. Created rate-limits.json with `used_percentage` field (75% 5h, 40% 7d)
-18. `auto-config show` correctly reads and displays "5h: 75%, 7d: 40%"
-19. Resets_at timestamps displayed as human-readable dates
+### statusline-profile.sh helper
+- Sourced the helper in normal state -- outputs `[personal] ` (correct)
+- Set `on_fallback: true` in auto-switch-state.json, sourced helper -- outputs `[personal FALLBACK] ` (correct)
+- Tested with missing config.json -- outputs empty string (graceful degradation)
+- Tested with missing auto-switch-state.json -- outputs `[personal] ` (correct, no false FALLBACK)
+- File permissions: 644 (read-only, correct for a sourced script)
 
-### Preemptive Switch (Spec Items 1, 3, 4)
-20. Set 5h to 98% (above 95% threshold), 7d to 50% (below)
-21. `check-limits` triggered switch to fallback — confirmed `on_fallback=true`
-22. State file uses `switch_back_at` (not `next_reset`) — value is 1711900000 (five_hour resets_at, the only window above threshold)
-23. `primary_resets_at` stored with both five_hour and seven_day epoch timestamps
+### setup.sh
+- `bash -n` syntax check passes
+- Tested `_install_profile_helper()` by deleting the helper, calling the function, and diffing -- creates identical file
+- Reviewed "create new" path: calls `_install_profile_helper()`, creates statusline with profile indicator sourced, uses `${_cs_indicator}` in output
+- Reviewed "inject into existing" path: awk injection places profile indicator after rate-limit snippet, uses `index()` for robust matching
+- Both paths handle idempotency (grep for marker before injecting)
 
-### Both Windows Above Threshold (Spec Item 3)
-24. Set both 5h (98%) and 7d (99%) above threshold with different resets_at values
-25. `switch_back_at` correctly set to max (1712400000 = seven_day), confirming "max of all windows above threshold" logic
+### Live statusline integration
+- Piped mock JSON through `~/.claude/statusline-command.sh` -- output starts with `[personal]` in purple ANSI color
+- The statusline correctly sources the profile helper and prefixes the output
 
-### Per-Profile Rate Limit Saving (Spec Item 2)
-26. After preemptive switch, `profiles/work/rate-limits.json` exists
-27. Contains correct data (used_percentage: 98 for five_hour)
+### No regressions
+- `claude-switcher version` -- outputs `2.2.0`
+- `claude-switcher help` -- complete help text
+- `claude-switcher list` -- shows both profiles correctly
+- `claude-switcher status` -- shows active profile, auto-switch config, live auth
+- `claude-switcher auto-config show` -- shows config with rate limits and reset times
+- `claude-switcher show personal` -- profile details
+- `claude-switcher show nonexistent` -- proper error message, exit 1
+- `claude-switcher bogus-command` -- proper error message, exit 1
+- All 13 shell scripts pass `bash -n` syntax check
 
-### Check-Limits Switch-Back (Spec Item 4)
-28. Set `switch_back_at` to past epoch while on fallback
-29. `check-limits` auto-switched back — confirmed `on_fallback=false`
-
-### Config Migration (Spec Item 5)
-30. Injected deprecated fields (`daily_reset_time`, `daily_reset_timezone`, `weekly_reset_day`, `weekly_reset_time`)
-31. After `auto-config show`, all deprecated fields removed from config file
-
-### Session-Start (Spec Item 6)
-32. On fallback with future `switch_back_at` — session-start shows "on fallback" message with switch-back time
-33. On fallback with past `switch_back_at` — session-start auto-switches back, shows "auto-switched back from fallback"
-34. Normal (not on fallback) — session-start shows rate limit percentages from `used_percentage`
-
-### Limit-Hit Command
-35. `limit-hit` with resets_at timestamps — switch_back_at set to earliest (five_hour: 1711900000)
-
-### Status Command
-36. While on fallback — shows "ON FALLBACK" with reason and "Switches back" with formatted date via `format_resets_at()`
-
-### Edge Cases
-37. `format_resets_at ""` — returns "(unknown)" as expected
-38. State file confirmed to have no `next_reset` field (has("next_reset") = false)
+### Version consistency
+- `vars.sh`: VERSION="2.2.0"
+- `plugin.json`: "version": "2.2.0"
+- CLI output: "claude-switcher 2.2.0"
 
 ## Issues Found
 
@@ -83,22 +72,30 @@ None.
 None.
 
 ### Note (minor, optional)
-- `save_rate_limits_for_active_profile()` at rate-limits.sh:49 uses `cp` without `chmod 600` on the destination. The per-profile rate-limits.json inherits source permissions (could be 644). Not a security risk since the parent directory is chmod 700, but inconsistent with the rest of the codebase which explicitly sets 600 on credential files.
+- The `_install_profile_helper()` hardcodes `~/.claude-switcher/` paths in the generated helper script rather than using `$SWITCHER_DIR`. This is fine since the SWITCHER_DIR is always `~/.claude-switcher`, but if that ever changes the helper would need updating too. Very minor.
 
 ## Spec Coverage
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| 1. Fix field name bug (`.percent` to `.used_percentage`) | Working | rate-limits.sh:7,15 and session-start.sh:122-123 all read `.used_percentage` |
-| 2. Per-profile rate limit tracking | Working | `save_rate_limits_for_active_profile()` copies to `profiles/<name>/rate-limits.json` on every check |
-| 3. Dynamic reset detection (`primary_resets_at` + `switch_back_at`) | Working | State stores both `primary_resets_at` object and computed `switch_back_at`. Uses max of above-threshold windows |
-| 4. Switch-back check in check-limits (async path) | Working | `check_primary_reset_and_switch_back()` reads `switch_back_at`, compares to now, calls `do_auto_switch_back` |
-| 5. Remove deprecated config options | Working | `daily-reset` and `weekly-reset` rejected. Migration removes deprecated fields. Default config clean |
-| 6. Update session-start.sh | Working | Uses `switch_back_at` (not `next_reset`), reads `used_percentage`, formats switch-back as human-readable |
-| 7. Update command docs (auto-config.md) | Working | No daily-reset/weekly-reset docs. Documents dynamic reset behavior |
+| Remove StopFailure matcher | Working | No matcher field in hooks.json. Script handles detection internally. |
+| on-stop-failure.sh internal detection | Working | Detects rate_limit, 429, overloaded, usage_limit, too many, quota, throttl, capacity via grep patterns on error fields and transcript |
+| /who slash command | Working | Valid frontmatter, correct CLI path, outputs all required info |
+| Profile indicator in status line | Working | Shows `[profile]` normally, `[profile FALLBACK]` when on fallback |
+| statusline-profile.sh helper | Working | Created by _install_profile_helper(), sourced by statusline, handles missing files gracefully |
+| setup.sh "create new" path | Working | Creates statusline with profile indicator integrated |
+| setup.sh "inject into existing" path | Working | Awk injection after rate-limit snippet, idempotent with marker check |
+| Version bump to 2.2.0 | Working | Consistent across vars.sh, plugin.json, CLI output |
+| README updated | Working | Documents /who command and profile indicator/FALLBACK behavior |
 
 ## Feedback for Builder
 
-All 7 spec items verified working. Both round-1 issues (status.sh `next_reset` and README deprecated commands) confirmed fixed. No regressions found.
+All iteration 2 changes are solid. The implementation is clean and well-tested:
 
-Optional improvement: add `chmod 600` after the `cp` in `save_rate_limits_for_active_profile()` for consistency with the rest of the security model.
+1. The decision to remove the StopFailure matcher and rely on the script's own detection is correct -- the script's grep patterns cover many more error string variants than a single matcher could.
+
+2. The profile helper as a separate sourced file is a good architectural choice -- it keeps the statusline script clean and makes the helper independently testable and updatable.
+
+3. Edge case handling is thorough: missing config.json returns empty indicator, missing state file defaults to non-fallback, and the setup injection is idempotent.
+
+No changes needed. Ship it.
