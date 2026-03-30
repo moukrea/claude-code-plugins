@@ -164,10 +164,10 @@ _cs_autoswitch() {
             local now_epoch
             now_epoch=$(date +%s)
             if [ "$now_epoch" -ge "$switch_back_at" ] 2>/dev/null; then
-                # Time to switch back — spawn async
-                sh "$cli" auto-config reset-state >/dev/null 2>&1
+                # Time to switch back — read original before clearing state
                 local original
                 original=$(jq -r '.original_profile // empty' "$state_file" 2>/dev/null)
+                sh "$cli" auto-config reset-state >/dev/null 2>&1
                 if [ -n "$original" ]; then
                     (sh "$cli" use "$original" >/dev/null 2>&1) &
                 fi
