@@ -1,7 +1,7 @@
 ---
 name: auto-config
-description: "View or configure auto-switching settings for Claude Code account profiles. Use when the user asks about auto-switch configuration, wants to change primary/fallback profiles, or adjust reset times."
-argument-hint: "[show | enable | disable | primary <name> | fallback <name> | threshold <pct> | daily-reset <HH:MM> [tz] | weekly-reset <day> [HH:MM] | reset-state]"
+description: "View or configure auto-switching settings for Claude Code account profiles. Use when the user asks about auto-switch configuration, wants to change primary/fallback profiles, or adjust thresholds."
+argument-hint: "[show | enable | disable | primary <name> | fallback <name> | threshold <pct> | reset-state]"
 allowed-tools: Bash
 ---
 
@@ -22,8 +22,9 @@ If argument provided, run the matching subcommand:
 After showing config, explain what each setting means:
 - **Primary**: The preferred account, consumed first
 - **Fallbacks**: Accounts to switch to when primary hits rate limits
-- **Daily reset**: When the primary account's daily session limit resets (from the Claude usage screen)
-- **Weekly reset**: When the weekly limit resets
+- **Threshold**: Switch when real usage (from status line) exceeds this percentage
+- **Rate limits**: Current 5-hour and 7-day usage with actual reset timestamps from Claude Code
+- **Switch-back**: Automatic — uses real `resets_at` timestamps from the rate limit data, not static times
 
 If the user is setting up auto-switch for the first time, guide them through using slash commands:
 1. Run `/setup` first to enable rate limit capture in the status line
@@ -31,7 +32,5 @@ If the user is setting up auto-switch for the first time, guide them through usi
 3. `/auto-config primary work`
 4. `/auto-config fallback personal`
 5. `/auto-config threshold 97` (switch at 97% real usage)
-6. `/auto-config daily-reset 15:00 Europe/Paris`
-7. `/auto-config weekly-reset Monday 10:00`
 
-The **threshold** controls preemptive switching. The PostToolUse hook reads real rate limit data (five_hour and seven_day percentages captured by the status line) and switches to the fallback when either exceeds the threshold.
+The **threshold** controls preemptive switching. The PostToolUse hook reads real rate limit data (five_hour and seven_day percentages captured by the status line) and switches to the fallback when either exceeds the threshold. When on fallback, it automatically switches back when the primary's rate limits have actually reset (using the real `resets_at` timestamps from Claude Code).

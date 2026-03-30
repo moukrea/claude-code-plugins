@@ -72,49 +72,32 @@ if [ -f "$AUTO_SWITCH_CONFIG" ] && [ -f "$AUTO_SWITCH_STATE" ]; then
     on_fb=$(jq -r '.on_fallback // false' "$AUTO_SWITCH_STATE" 2>/dev/null)
 
     if [ "$enabled" = "true" ] && [ "$on_fb" = "true" ]; then
-        next_reset=$(jq -r '.next_reset // empty' "$AUTO_SWITCH_STATE" 2>/dev/null)
+        switch_back_at=$(jq -r '.switch_back_at // empty' "$AUTO_SWITCH_STATE" 2>/dev/null)
         original=$(jq -r '.original_profile // empty' "$AUTO_SWITCH_STATE" 2>/dev/null)
 
         should_switch_back=false
 
-        if [ -n "$next_reset" ]; then
+        if [ -n "$switch_back_at" ] && [ "$switch_back_at" != "null" ]; then
             now_epoch=$(date +%s)
-            reset_epoch=$(date -d "$next_reset" "+%s" 2>/dev/null || echo "")
-
-            if [ -z "$reset_epoch" ]; then
-                case "$next_reset" in
-                    [0-9]*) reset_epoch="$next_reset" ;;
-                esac
-            fi
-
-            if [ -n "$reset_epoch" ] && [ "$now_epoch" -ge "$reset_epoch" ]; then
+            if [ "$now_epoch" -ge "$switch_back_at" ] 2>/dev/null; then
                 should_switch_back=true
             fi
         fi
 
         if [ "$should_switch_back" = "true" ] && [ -n "$original" ]; then
             sh "$CLI" use "$original" >/dev/null 2>&1 || true
-
-            cat > "$AUTO_SWITCH_STATE" <<JSON
-{
-  "on_fallback": false,
-  "original_profile": null,
-  "fallback_profile": null,
-  "switched_at": $(date +%s),
-  "reason": null,
-  "next_reset": null
-}
-JSON
-            chmod 600 "$AUTO_SWITCH_STATE"
-
-            # Clear auto-switch state since we're back on primary
             sh "$CLI" auto-config reset-state >/dev/null 2>&1 || true
 
             active="$original"
             auto_switch_msg=" (auto-switched back from fallback -- limit reset)"
         else
             reason=$(jq -r '.reason // empty' "$AUTO_SWITCH_STATE" 2>/dev/null)
-            auto_switch_msg=" (on fallback due to ${reason}, primary: ${original}, resets: ${next_reset:-unknown})"
+            # Format switch_back_at as human-readable
+            switch_back_display=""
+            if [ -n "$switch_back_at" ] && [ "$switch_back_at" != "null" ]; then
+                switch_back_display=$(date -d "@$switch_back_at" "+%H:%M %Z" 2>/dev/null || date -r "$switch_back_at" "+%H:%M %Z" 2>/dev/null || echo "$switch_back_at")
+            fi
+            auto_switch_msg=" (on fallback due to ${reason}, primary: ${original}, switches back: ${switch_back_display:-unknown})"
         fi
     fi
 fi
@@ -136,8 +119,8 @@ usage_msg=""
 if [ -f "$AUTO_SWITCH_CONFIG" ] && [ -f "$RATE_LIMITS_FILE" ]; then
     enabled_check=$(jq -r '.enabled // false' "$AUTO_SWITCH_CONFIG" 2>/dev/null)
     if [ "$enabled_check" = "true" ]; then
-        five_hour_pct=$(jq -r '.five_hour.percent // 0' "$RATE_LIMITS_FILE" 2>/dev/null)
-        seven_day_pct=$(jq -r '.seven_day.percent // 0' "$RATE_LIMITS_FILE" 2>/dev/null)
+        five_hour_pct=$(jq -r '.five_hour.used_percentage // 0' "$RATE_LIMITS_FILE" 2>/dev/null)
+        seven_day_pct=$(jq -r '.seven_day.used_percentage // 0' "$RATE_LIMITS_FILE" 2>/dev/null)
         threshold=$(jq -r '.preemptive_switch_percent // 97' "$AUTO_SWITCH_CONFIG" 2>/dev/null)
         usage_msg=" [5h: ${five_hour_pct}%, 7d: ${seven_day_pct}%, switches at ${threshold}%]"
     fi

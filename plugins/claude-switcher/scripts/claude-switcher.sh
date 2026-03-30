@@ -49,8 +49,6 @@ Auto-switch:
     primary <name>          Set primary (preferred) profile
     fallback <name>         Add a fallback profile
     threshold <percent>     Set preemptive switch % (default: 97)
-    daily-reset <HH:MM> [tz]  Set daily limit reset time
-    weekly-reset <day> [HH:MM] Set weekly limit reset day/time
     reset-state             Clear auto-switch state
   limit-hit                 Manually trigger fallback switch
 

@@ -12,13 +12,9 @@ cmd_auto_config() {
         show)
             echo "Auto-switch configuration:"
             echo ""
-            local enabled primary daily_time daily_tz weekly_day weekly_time
+            local enabled primary
             enabled=$(get_auto_config_value "enabled")
             primary=$(get_auto_config_value "primary_profile")
-            daily_time=$(get_auto_config_value "daily_reset_time")
-            daily_tz=$(get_auto_config_value "daily_reset_timezone")
-            weekly_day=$(get_auto_config_value "weekly_reset_day")
-            weekly_time=$(get_auto_config_value "weekly_reset_time")
 
             echo "  Enabled:        ${enabled:-false}"
             echo "  Primary:        ${primary:-(not set)}"
@@ -29,27 +25,34 @@ cmd_auto_config() {
 
             echo "  Fallbacks:      ${fallbacks:-(none)}"
             echo "  Threshold:      ${threshold:-97}%"
-            echo "  Daily reset:    ${daily_time} ${daily_tz}"
-            echo "  Weekly reset:   ${weekly_day} ${weekly_time} ${daily_tz}"
 
             echo ""
             echo "  Rate limits:    $(format_rate_limits)"
+
+            # Show resets_at from current rate-limits.json
+            local five_resets seven_resets
+            five_resets=$(get_rate_limit_resets_at "five_hour")
+            seven_resets=$(get_rate_limit_resets_at "seven_day")
+            if [ -n "$five_resets" ] || [ -n "$seven_resets" ]; then
+                echo "  5h resets at:   $(format_resets_at "$five_resets")"
+                echo "  7d resets at:   $(format_resets_at "$seven_resets")"
+            fi
 
             if [ -f "$AUTO_SWITCH_STATE" ]; then
                 local on_fb
                 on_fb=$(get_auto_switch_state "on_fallback")
                 if [ "$on_fb" = "true" ]; then
-                    local orig fb_prof reason next
+                    local orig fb_prof reason switch_back_at
                     orig=$(get_auto_switch_state "original_profile")
                     fb_prof=$(get_auto_switch_state "fallback_profile")
                     reason=$(get_auto_switch_state "reason")
-                    next=$(get_auto_switch_state "next_reset")
+                    switch_back_at=$(get_auto_switch_state "switch_back_at")
                     echo ""
                     echo "  ** ON FALLBACK **"
                     echo "  Original:       $orig"
                     echo "  Using:          $fb_prof"
                     echo "  Reason:         $reason"
-                    echo "  Next reset:     ${next:-(unknown)}"
+                    echo "  Switches back:  $(format_resets_at "$switch_back_at")"
                 fi
             fi
             ;;
@@ -81,27 +84,6 @@ cmd_auto_config() {
             set_auto_config_value "fallback_profiles" "$new_fallbacks"
             echo "Added \"$name\" to fallback profiles."
             ;;
-        daily-reset)
-            local time="${1:-}" tz="${2:-}"
-            [ -z "$time" ] && die "usage: claude-switcher auto-config daily-reset <HH:MM> [timezone]"
-            if ! echo "$time" | grep -qE '^[0-9]{1,2}:[0-9]{2}$'; then
-                die "invalid time format. Use HH:MM (e.g., 15:00)"
-            fi
-            local hour=${time%%:*} min=${time##*:}
-            if [ "$hour" -gt 23 ] || [ "$min" -gt 59 ]; then
-                die "invalid time '$time'. Hours must be 0-23, minutes 0-59."
-            fi
-            set_auto_config_value "daily_reset_time" "$time"
-            [ -n "$tz" ] && set_auto_config_value "daily_reset_timezone" "$tz"
-            echo "Daily reset set to $time${tz:+ ($tz)}"
-            ;;
-        weekly-reset)
-            local day="${1:-}" time="${2:-}"
-            [ -z "$day" ] && die "usage: claude-switcher auto-config weekly-reset <day> [HH:MM]"
-            set_auto_config_value "weekly_reset_day" "$day"
-            [ -n "$time" ] && set_auto_config_value "weekly_reset_time" "$time"
-            echo "Weekly reset set to $day${time:+ at $time}"
-            ;;
         threshold)
             local pct="${1:-}"
             [ -z "$pct" ] && die "usage: claude-switcher auto-config threshold <percent>"
@@ -116,7 +98,7 @@ cmd_auto_config() {
             echo "Auto-switch state cleared."
             ;;
         *)
-            die "unknown auto-config subcommand: $subcmd. Use: show, enable, disable, primary, fallback, threshold, daily-reset, weekly-reset, reset-state"
+            die "unknown auto-config subcommand: $subcmd. Use: show, enable, disable, primary, fallback, threshold, reset-state"
             ;;
     esac
 }
@@ -133,6 +115,23 @@ cmd_limit_hit() {
     primary=$(get_auto_config_value "primary_profile")
     [ -z "$primary" ] && die "no primary profile configured. Run 'claude-switcher auto-config primary <name>' first."
 
+    # Read current resets_at timestamps for switch-back timing
+    local five_resets seven_resets switch_back_at
+    five_resets=$(get_rate_limit_resets_at "five_hour")
+    seven_resets=$(get_rate_limit_resets_at "seven_day")
+
+    # For manual limit-hit, use the earliest resets_at as switch-back time
+    switch_back_at=""
+    if [ -n "$five_resets" ] && [ -n "$seven_resets" ]; then
+        if [ "$five_resets" -le "$seven_resets" ] 2>/dev/null; then
+            switch_back_at="$five_resets"
+        else
+            switch_back_at="$seven_resets"
+        fi
+    else
+        switch_back_at="${five_resets:-$seven_resets}"
+    fi
+
     echo "Rate limit hit. Switching to fallback..."
-    do_auto_switch_to_fallback "rate_limit_manual"
+    do_auto_switch_to_fallback "rate_limit_manual" "$five_resets" "$seven_resets" "$switch_back_at"
 }

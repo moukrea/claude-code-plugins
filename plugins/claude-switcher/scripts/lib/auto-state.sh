@@ -9,15 +9,12 @@ init_auto_switch_config() {
   "enabled": false,
   "primary_profile": null,
   "fallback_profiles": [],
-  "daily_reset_time": "15:00",
-  "daily_reset_timezone": "Europe/Paris",
-  "weekly_reset_day": "Monday",
-  "weekly_reset_time": "10:00",
   "preemptive_switch_percent": 97
 }
 JSON
         chmod 600 "$AUTO_SWITCH_CONFIG"
     else
+        # Migrate: remove deprecated fields from older configs
         local needs_update=false
         if ! jq -e '.preemptive_switch_percent' "$AUTO_SWITCH_CONFIG" >/dev/null 2>&1; then
             needs_update=true
@@ -25,10 +22,15 @@ JSON
         if jq -e '.estimated_daily_capacity' "$AUTO_SWITCH_CONFIG" >/dev/null 2>&1; then
             needs_update=true
         fi
+        if jq -e '.daily_reset_time' "$AUTO_SWITCH_CONFIG" >/dev/null 2>&1; then
+            needs_update=true
+        fi
         if [ "$needs_update" = true ]; then
             local tmp
             tmp=$(mktemp "${AUTO_SWITCH_CONFIG}.XXXXXX")
-            jq '. + {preemptive_switch_percent: (.preemptive_switch_percent // 97)} | del(.estimated_daily_capacity)' "$AUTO_SWITCH_CONFIG" > "$tmp" && mv "$tmp" "$AUTO_SWITCH_CONFIG"
+            jq '. + {preemptive_switch_percent: (.preemptive_switch_percent // 97)}
+                | del(.estimated_daily_capacity, .daily_reset_time, .daily_reset_timezone, .weekly_reset_day, .weekly_reset_time)' \
+                "$AUTO_SWITCH_CONFIG" > "$tmp" && mv "$tmp" "$AUTO_SWITCH_CONFIG"
             chmod 600 "$AUTO_SWITCH_CONFIG"
         fi
     fi
@@ -64,10 +66,9 @@ get_auto_switch_state() {
 
 set_auto_switch_state() {
     local on_fallback="$1" original="$2" fallback="$3" reason="$4"
+    local five_resets="${5:-}" seven_resets="${6:-}" switch_back="${7:-}"
     local now
     now=$(date +%s)
-    local next_reset
-    next_reset=$(compute_next_reset)
     cat > "$AUTO_SWITCH_STATE" <<EOF
 {
   "on_fallback": $on_fallback,
@@ -75,68 +76,28 @@ set_auto_switch_state() {
   "fallback_profile": $([ -n "$fallback" ] && echo "\"$fallback\"" || echo "null"),
   "switched_at": $now,
   "reason": $([ -n "$reason" ] && echo "\"$reason\"" || echo "null"),
-  "next_reset": $([ -n "$next_reset" ] && echo "\"$next_reset\"" || echo "null")
+  "primary_resets_at": {
+    "five_hour": $([ -n "$five_resets" ] && echo "$five_resets" || echo "null"),
+    "seven_day": $([ -n "$seven_resets" ] && echo "$seven_resets" || echo "null")
+  },
+  "switch_back_at": $([ -n "$switch_back" ] && echo "$switch_back" || echo "null")
 }
 EOF
     chmod 600 "$AUTO_SWITCH_STATE"
 }
 
 clear_auto_switch_state() {
-    set_auto_switch_state "false" "" "" ""
-}
-
-compute_next_reset() {
-    local reset_time reset_tz
-    reset_time=$(get_auto_config_value "daily_reset_time")
-    reset_tz=$(get_auto_config_value "daily_reset_timezone")
-    [ -z "$reset_time" ] && return
-
-    local now_epoch target_epoch today_date
-    now_epoch=$(date +%s)
-
-    today_date=$(TZ="$reset_tz" date "+%Y-%m-%d" 2>/dev/null || date "+%Y-%m-%d")
-    target_epoch=$(TZ="$reset_tz" date -d "${today_date} ${reset_time}" "+%s" 2>/dev/null || echo "")
-
-    if [ -z "$target_epoch" ]; then
-        # macOS/BSD fallback
-        target_epoch=$(python3 -c "
-import datetime, zoneinfo
-tz = zoneinfo.ZoneInfo('$reset_tz')
-now = datetime.datetime.now(tz)
-reset = now.replace(hour=${reset_time%%:*}, minute=${reset_time##*:}, second=0, microsecond=0)
-if reset <= now:
-    reset += datetime.timedelta(days=1)
-print(int(reset.timestamp()))
-" 2>/dev/null || echo "")
-    else
-        if [ "$target_epoch" -le "$now_epoch" ]; then
-            target_epoch=$((target_epoch + 86400))
-        fi
-    fi
-
-    if [ -n "$target_epoch" ]; then
-        TZ="$reset_tz" date -d "@$target_epoch" "+%Y-%m-%dT%H:%M:%S%:z" 2>/dev/null || \
-            date -r "$target_epoch" "+%Y-%m-%dT%H:%M:%S%z" 2>/dev/null || \
-            echo "$target_epoch"
-    fi
+    set_auto_switch_state "false" "" "" "" "" "" ""
 }
 
 is_past_reset_time() {
-    local next_reset
-    next_reset=$(get_auto_switch_state "next_reset")
-    [ -z "$next_reset" ] && return 1
+    local switch_back_at
+    switch_back_at=$(get_auto_switch_state "switch_back_at")
+    [ -z "$switch_back_at" ] || [ "$switch_back_at" = "null" ] && return 1
 
-    local now_epoch reset_epoch
+    local now_epoch
     now_epoch=$(date +%s)
-
-    reset_epoch=$(date -d "$next_reset" "+%s" 2>/dev/null || echo "")
-    if [ -z "$reset_epoch" ]; then
-        case "$next_reset" in
-            [0-9]*) reset_epoch="$next_reset" ;;
-        esac
-    fi
-
-    [ -n "$reset_epoch" ] && [ "$now_epoch" -ge "$reset_epoch" ]
+    [ "$now_epoch" -ge "$switch_back_at" ] 2>/dev/null
 }
 
 get_next_fallback() {
@@ -164,10 +125,14 @@ EOF
 
 do_auto_switch_to_fallback() {
     local reason="${1:-rate_limit}"
+    local five_resets="${2:-}" seven_resets="${3:-}" switch_back_at="${4:-}"
     local current
     current=$(get_config_value "active_profile")
     local primary
     primary=$(get_auto_config_value "primary_profile")
+
+    # Save current rate limits to primary profile before switching
+    save_rate_limits_for_active_profile
 
     local fallback
     fallback=$(get_next_fallback "$current") || {
@@ -175,7 +140,7 @@ do_auto_switch_to_fallback() {
         return 1
     }
 
-    set_auto_switch_state "true" "${primary:-$current}" "$fallback" "$reason"
+    set_auto_switch_state "true" "${primary:-$current}" "$fallback" "$reason" "$five_resets" "$seven_resets" "$switch_back_at"
     cmd_use "$fallback"
 }
 
