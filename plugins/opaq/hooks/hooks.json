@@ -1,48 +1,50 @@
 {
-  "PreToolUse": [
-    {
-      "matcher": "Bash",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "${CLAUDE_PLUGIN_ROOT}/scripts/bash-guard.sh",
-          "timeout": 5
-        }
-      ]
-    },
-    {
-      "matcher": "Write|Edit|MultiEdit",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "${CLAUDE_PLUGIN_ROOT}/scripts/file-guard.sh",
-          "timeout": 5
-        }
-      ]
-    }
-  ],
-  "PostToolUse": [
-    {
-      "matcher": "Bash",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "${CLAUDE_PLUGIN_ROOT}/scripts/post-bash-auth-check.sh",
-          "timeout": 5
-        }
-      ]
-    }
-  ],
-  "SessionStart": [
-    {
-      "matcher": "startup|compact",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-start.sh",
-          "timeout": 5
-        }
-      ]
-    }
-  ]
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/bash-guard.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/file-guard.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/post-bash-auth-check.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-start.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
 }
