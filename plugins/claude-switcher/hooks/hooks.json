@@ -1,0 +1,20 @@
+{
+  "hooks": [
+    {
+      "event": "SessionStart",
+      "type": "command",
+      "command": "$CLAUDE_PLUGIN_ROOT/scripts/session-start.sh"
+    },
+    {
+      "event": "PostToolUse",
+      "type": "command",
+      "command": "$CLAUDE_PLUGIN_ROOT/scripts/on-post-tool-use.sh",
+      "async": true
+    },
+    {
+      "event": "StopFailure",
+      "type": "command",
+      "command": "$CLAUDE_PLUGIN_ROOT/scripts/on-stop-failure.sh"
+    }
+  ]
+}

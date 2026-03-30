@@ -7,6 +7,7 @@ Productivity and security plugins for [Claude Code](https://claude.ai/code).
 | Plugin | Description |
 |--------|-------------|
 | [opaq](plugins/opaq/) | Secure credential access — use secrets in commands without ever exposing them |
+| [claude-switcher](plugins/claude-switcher/) | Switch between multiple Claude Code accounts instantly by swapping credential profiles |
 
 ## Installation
 
@@ -22,6 +23,7 @@ Install plugins:
 
 ```
 /plugin install opaq@moukrea-plugins
+/plugin install claude-switcher@moukrea-plugins
 ```
 
 ### From a local clone
