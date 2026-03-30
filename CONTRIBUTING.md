@@ -24,8 +24,6 @@ claude-code-plugins/
 │       ├── release.yml          # Auto-release on main
 │       └── tag-release.yml      # GitHub release creation
 └── plugins/
-    ├── craft/                   # Prompt generation plugin
-    ├── git-pilot/               # Git workflow automation plugin
     └── opaq/                    # Credential security plugin
 ```
 
