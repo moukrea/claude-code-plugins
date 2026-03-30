@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Productivity and security plugins for Claude Code",
-    "version": "1.1.12",
+    "version": "1.1.13",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -14,7 +14,7 @@
       "name": "opaq",
       "source": "./plugins/opaq",
       "description": "Secure credential manager and execution wrapper. Use secrets in commands without ever seeing them — for humans and AI agents alike.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "author": {
         "name": "moukrea"
       },
