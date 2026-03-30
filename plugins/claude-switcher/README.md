@@ -1,130 +1,177 @@
 # claude-switcher
 
-Claude Code plugin for switching between multiple Claude Max accounts. Auto-switches on rate limits and switches back at reset time.
+Switch between multiple Claude Code accounts instantly. Auto-switches on rate limits and switches back when they reset.
 
 ## Why
 
-If you have both a company Claude Max subscription (limited usage) and a personal one, switching accounts normally requires `claude auth logout` then `claude auth login` every time.
+If you have multiple Claude Max subscriptions (e.g., a work account and a personal one), switching between them normally requires logging out and back in every time. claude-switcher saves your accounts as named profiles and swaps credentials instantly -- no network calls, no re-authentication.
 
-claude-switcher saves named profiles and restores them instantly -- zero network calls. Plus it auto-switches to your fallback account when you hit rate limits, and auto-switches back when the primary resets.
+When your primary account hits rate limits, it can automatically switch to your fallback account, then switch back when the limits reset.
 
 ## Install
 
-Register as a Claude Code plugin:
+```bash
+claude mcp  # open plugin manager, search for "claude-switcher"
+```
+
+Or register manually:
 
 ```bash
 claude --plugin-dir /path/to/claude-switcher
 ```
 
-That's it. On first load, the plugin checks prerequisites and creates a CLI symlink at `~/.claude-switcher/cli` so all slash commands resolve automatically -- you never need to know or type the plugin's install path.
+On first load, the plugin:
+- Checks that `jq` is installed (required dependency)
+- Creates a CLI symlink at `~/.claude-switcher/cli`
+- Sets up rate limit capture and auto-switch in your status line
 
-**Requires**: bash 4.0+, [jq](https://jqlang.github.io/jq/download/)
+**Requires**: [jq](https://jqlang.github.io/jq/download/)
 
-## Quick Start
+## Getting Started
 
-Everything is done through slash commands inside Claude Code:
+### 1. Save your first account
 
-1. `/setup` — inject rate limit capture and auto-switch into status line
-2. `/save work` — save your current logged-in account
-3. Log in to the other account: `! claude auth logout && claude auth login`
-4. `/save personal` — save the second account
-5. `/auto-config enable` — enable auto-switching
-6. `/auto-config primary work` — set primary profile
-7. `/auto-config fallback personal` — set fallback profile
-8. `/auto-config threshold 97` — switch at 97% usage
+While logged into your first Claude account:
 
-## Slash Commands
+```
+/save work
+```
 
-Once installed as a plugin, use these in Claude Code sessions:
+This saves the current credentials as a profile named "work".
 
-| Command | Description |
-|---------|-------------|
-| `/who` | Show current active profile |
-| `/save <name>` | Save current account as a named profile |
-| `/switch <name>` | Switch to a profile |
-| `/switch prev` | Switch to previous profile |
-| `/profiles` | List all profiles |
-| `/cli <command>` | Run any CLI command (status, show, delete, rename, etc.) |
-| `/limit-hit` | Manually trigger fallback (rate limit) |
-| `/auto-config` | View/edit auto-switch configuration |
-| `/setup` | Set up rate limit capture and auto-switch in status line |
+### 2. Log in to your second account
+
+```
+! claude auth logout && claude auth login
+```
+
+### 3. Save the second account
+
+```
+/save personal
+```
+
+### 4. Switch between accounts
+
+```
+/switch work        # switch to work profile
+/switch personal    # switch to personal profile
+/switch prev        # switch back to the previous profile
+```
+
+### 5. Check which account is active
+
+```
+/who
+```
+
+Shows the active profile name, email, subscription type, and rate limit usage.
 
 ## Auto-Switch
 
-When enabled, claude-switcher automatically manages account switching:
+claude-switcher can automatically switch to a fallback account when your primary hits rate limits, and switch back when they reset.
 
-1. **Status line driven**: The status line script reads real rate limit data on every render and switches at a configurable threshold (default 97%) BEFORE hitting the actual limit
-2. **On rate limit error**: A `StopFailure` hook detects actual rate limit API errors as a safety net
-3. **On reset**: The status line checks if the primary account's limit has reset and switches back automatically
-4. **Manual**: Use `/limit-hit` if auto-detection misses a rate limit
+### Enable auto-switch
 
-### Configuration
+```
+/auto-config enable
+/auto-config primary work
+/auto-config fallback personal
+/auto-config threshold 97
+```
 
-All configuration is done via the `/auto-config` slash command:
+This tells claude-switcher:
+- **primary**: Use "work" by default
+- **fallback**: Switch to "personal" when rate-limited
+- **threshold**: Switch preemptively at 97% usage (before hitting the hard limit)
+
+### How it works
+
+The plugin injects a small helper into your Claude Code status line script. On every status line refresh (which happens continuously), it:
+
+1. Reads your current rate limit usage directly from Claude Code
+2. Compares it against your configured threshold
+3. If usage exceeds the threshold, it switches to the fallback profile
+4. When on fallback, it checks if the primary's rate limits have reset and switches back
+
+A `StopFailure` hook also serves as a safety net -- if you hit an actual rate limit error, it detects it and switches.
+
+### Show profile in status line
+
+To see which account is active at all times in your status line:
+
+```
+/auto-config show-profile enable
+```
+
+This shows `[work]` or `[personal FALLBACK]` in the status bar. It's off by default.
+
+### View auto-switch status
+
+```
+/auto-config
+```
+
+Shows: enabled/disabled, primary, fallbacks, threshold, current rate limits, and whether you're on a fallback.
+
+### Manual fallback
+
+If auto-detection misses a rate limit:
+
+```
+/limit-hit
+```
+
+## Slash Commands
 
 | Command | Description |
 |---------|-------------|
-| `/auto-config` | View current config |
-| `/auto-config enable` | Enable auto-switching |
-| `/auto-config disable` | Disable auto-switching |
-| `/auto-config primary work` | Set primary profile |
-| `/auto-config fallback personal` | Add fallback profile |
-| `/auto-config threshold 97` | Switch at 97% real usage |
-| `/auto-config show-profile enable` | Show profile name in status line |
-| `/auto-config reset-state` | Clear auto-switch state |
+| `/who` | Show active profile (name, email, subscription, rate limits) |
+| `/save <name>` | Save current account as a named profile |
+| `/switch <name>` | Switch to a profile (`prev` for previous) |
+| `/profiles` | List all saved profiles |
+| `/auto-config [...]` | View or configure auto-switching |
+| `/limit-hit` | Manually trigger fallback switch |
+| `/setup` | Re-run status line setup (idempotent) |
+| `/cli <command>` | Run any CLI command directly |
 
-## CLI Reference
+### Auto-config subcommands
 
-All commands are also available via `/cli <command>` or the script directly:
+| Subcommand | Description |
+|------------|-------------|
+| `show` | View current configuration (default) |
+| `enable` / `disable` | Toggle auto-switching |
+| `primary <name>` | Set the primary (preferred) profile |
+| `fallback <name>` | Add a fallback profile |
+| `threshold <percent>` | Preemptive switch threshold (default: 97) |
+| `show-profile enable` / `disable` | Toggle profile name in status line |
+| `reset-state` | Clear auto-switch state |
+
+### CLI commands (via `/cli`)
+
+For operations without a dedicated slash command:
 
 ```
-~/.claude-switcher/cli <command> [options]
-
-Profile Management:
-  save <name> [--force]     Save current auth as a profile
-  use <name>                Switch to a profile
-  prev, -                   Switch to previous profile
-  list                      List profiles
-  show <name>               Profile details
-  status                    Active profile + auto-switch state
-  delete <name>             Delete a profile
-  rename <old> <new>        Rename a profile
-  setup                     Interactive first-time setup
-
-Auto-Switch:
-  auto-config [subcmd]      Configure auto-switching
-  limit-hit                 Manually trigger fallback
-
-Other:
-  uninstall                 Remove plugin registration
-  help                      Show help
-  version                   Show version
+/cli status           # full status with live auth check
+/cli show work        # detailed info for a profile
+/cli delete old-acct  # delete a profile
+/cli rename old new   # rename a profile
+/cli version          # show version
 ```
 
 ## How It Works
 
-**Profile switching**: Copies OAuth tokens from `~/.claude-switcher/profiles/<name>/` back to `~/.claude/.credentials.json` and surgically updates only the `oauthAccount` key in `~/.claude.json`.
+**Profile storage**: Each profile is saved in `~/.claude-switcher/profiles/<name>/` with credentials and account metadata. Switching copies credentials to `~/.claude/.credentials.json` and updates `~/.claude.json`.
 
-**Rate limit capture**: The `/setup` command injects a snippet into your Claude Code status line script. The status line receives real rate limit data from Claude Code (five_hour and seven_day percentages) on every refresh, and the snippet writes this to `~/.claude-switcher/rate-limits.json`.
+**Status line integration**: The `/setup` command injects three snippets into your status line script:
+1. **Rate limit capture** -- writes fresh rate limit data to `~/.claude-switcher/rate-limits.json`
+2. **Auto-switch** -- checks thresholds and triggers switches (async, non-blocking)
+3. **Profile indicator** -- shows the active profile name (when enabled)
 
-**Auto-switching (status line driven)**: The status line also sources an auto-switch helper that compares the fresh rate limit data against the configured threshold. When either the 5-hour or 7-day usage exceeds the threshold, it spawns an async CLI call to switch to the fallback profile. This is faster and fresher than hook-based switching.
-
-**Profile indicator**: When enabled via `/auto-config show-profile enable`, the status line shows the active profile name. When on a fallback profile, it shows `[profile FALLBACK]` for clear visibility.
-
-**Rate limit error detection**: The `StopFailure` hook serves as a safety net. It analyzes actual API errors for rate-limit patterns and switches if the preemptive system missed.
-
-**Dynamic switch-back**: The status line helper checks if the primary account's rate limits have actually reset (using real `resets_at` timestamps from Claude Code). When the reset time passes, it auto-switches back -- no static daily/weekly times needed.
-
-## Security
-
-- Profile directories: `chmod 700`
-- Credential files: `chmod 600`
-- No credentials sent over the network
-- Atomic writes (temp file + mv)
-- Backup state preserved before every switch
+**Security**: Profile directories are `chmod 700`, credential files are `chmod 600`. No credentials are sent over the network. All writes use atomic temp-file-then-rename.
 
 ## Uninstall
 
-```bash
-~/.claude-switcher/cli uninstall
+```
+/cli uninstall
 ```
