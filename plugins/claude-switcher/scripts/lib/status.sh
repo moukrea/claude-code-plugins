@@ -35,12 +35,12 @@ cmd_status() {
             local on_fb
             on_fb=$(get_auto_switch_state "on_fallback")
             if [ "$on_fb" = "true" ]; then
-                local orig reason next
+                local orig reason switch_back_at
                 orig=$(get_auto_switch_state "original_profile")
                 reason=$(get_auto_switch_state "reason")
-                next=$(get_auto_switch_state "next_reset")
+                switch_back_at=$(get_auto_switch_state "switch_back_at")
                 echo "  ** ON FALLBACK (was: $orig, reason: $reason) **"
-                echo "  Next reset:   ${next:-(unknown)}"
+                echo "  Switches back: $(format_resets_at "$switch_back_at")"
             fi
         fi
     fi

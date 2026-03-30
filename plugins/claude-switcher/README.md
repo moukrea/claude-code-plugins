@@ -32,7 +32,6 @@ Everything is done through slash commands inside Claude Code:
 6. `/auto-config primary work` — set primary profile
 7. `/auto-config fallback personal` — set fallback profile
 8. `/auto-config threshold 97` — switch at 97% usage
-9. `/auto-config daily-reset 15:00 Europe/Paris` — set daily reset time
 
 ## Slash Commands
 
@@ -69,8 +68,6 @@ All configuration is done via the `/auto-config` slash command:
 | `/auto-config primary work` | Set primary profile |
 | `/auto-config fallback personal` | Add fallback profile |
 | `/auto-config threshold 97` | Switch at 97% real usage |
-| `/auto-config daily-reset 15:00 Europe/Paris` | Set daily reset time |
-| `/auto-config weekly-reset Monday 10:00` | Set weekly reset time |
 | `/auto-config reset-state` | Clear auto-switch state |
 
 ## CLI Reference
@@ -111,7 +108,7 @@ Other:
 
 **Rate limit detection**: The `StopFailure` hook serves as a safety net. It analyzes errors for rate-limit patterns and switches if the preemptive system missed.
 
-**Time-based switch-back**: The `SessionStart` hook checks if the configured daily reset time has passed. If the primary account was rate-limited but has since reset, it auto-switches back.
+**Dynamic switch-back**: The `SessionStart` and `PostToolUse` hooks check if the primary account's rate limits have actually reset (using real `resets_at` timestamps from Claude Code). When the reset time passes, it auto-switches back -- no static daily/weekly times needed.
 
 ## Security
 
