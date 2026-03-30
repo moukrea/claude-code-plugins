@@ -1,6 +1,6 @@
 {
   "name": "claude-switcher",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Switch between multiple Claude Code accounts instantly by swapping credential profiles",
   "author": {
     "name": "Emeric Commenge"
