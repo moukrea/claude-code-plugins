@@ -164,12 +164,20 @@ _cs_autoswitch() {
             local now_epoch
             now_epoch=$(date +%s)
             if [ "$now_epoch" -ge "$switch_back_at" ] 2>/dev/null; then
-                # Time to switch back — read original before clearing state
+                # Debounce: skip if a switch attempt is already in progress (lock file < 30s old)
+                local lock_file="$HOME/.claude-switcher/.switch-back.lock"
+                if [ -f "$lock_file" ]; then
+                    local lock_age
+                    lock_age=$(( now_epoch - $(stat -c %Y "$lock_file" 2>/dev/null || echo 0) ))
+                    [ "$lock_age" -lt 30 ] && return 0
+                fi
+                touch "$lock_file" 2>/dev/null
+
+                # Time to switch back — switch first, clear state only on success
                 local original
                 original=$(jq -r '.original_profile // empty' "$state_file" 2>/dev/null)
-                sh "$cli" auto-config reset-state >/dev/null 2>&1
                 if [ -n "$original" ]; then
-                    (sh "$cli" use "$original" >/dev/null 2>&1) &
+                    (sh "$cli" use "$original" && sh "$cli" auto-config reset-state; rm -f "$lock_file") >> ~/.claude-switcher/switch.log 2>&1 &
                 fi
             fi
         fi

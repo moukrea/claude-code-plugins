@@ -154,6 +154,5 @@ do_auto_switch_back() {
         return 1
     fi
 
-    clear_auto_switch_state
-    cmd_use "$original"
+    cmd_use "$original" && clear_auto_switch_state
 }
