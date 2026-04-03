@@ -1,0 +1,182 @@
+# git-master default configuration
+# Override per-project via .git-master.yml or globally via ~/.config/git-master/config.yml
+
+# --- Provider ---
+provider:
+  type: auto              # auto | github | gitlab | gitea | bitbucket
+  host: ""                # Custom host for private instances
+  cli_preference:         # Fallback order for CLI tools
+    - gh
+    - glab
+    - tea
+    - git
+  token_env: ""           # Environment variable name holding API token
+  fallback_enabled: true  # Try next CLI tool on failure
+
+# --- Commit ---
+commit:
+  convention: conventional  # conventional | angular | gitmoji | custom
+  types:
+    - feat
+    - fix
+    - docs
+    - style
+    - refactor
+    - perf
+    - test
+    - build
+    - ci
+    - chore
+    - revert
+  scopes: []              # Allowed scopes (empty = any scope allowed)
+  scope_required: false
+  subject:
+    max_length: 72
+    case: lower            # lower | upper | sentence | none
+    no_trailing_period: true
+  body:
+    required: false
+    max_line_length: 100
+    require_references: "" # Regex for ticket references, e.g. "PROJ-\\d+"
+  breaking:
+    footer_required: true
+    exclamation_mark: true
+  signing:
+    enabled: false
+    method: gpg            # gpg | ssh
+    key: ""
+  skip_patterns:
+    - "^Merge "
+    - "^Revert \""
+    - "^fixup! "
+    - "^squash! "
+    - "^amend! "
+  ai_attribution: false
+  custom_pattern: ""       # Regex for convention: custom (named groups: type, scope, subject)
+  custom_description: ""   # Human-readable description of custom convention
+  emoji_prefix: null       # Map type to emoji, e.g. { feat: "sparkles", fix: "bug" }
+  pre_checks:
+    enabled: false
+    commands: []           # List of { command: "npm run lint", name: "lint", required: true }
+
+# --- Branch ---
+branch:
+  protected:
+    - main
+    - master
+    - develop
+  naming_pattern: ""       # Regex, e.g. "^(feature|bugfix|hotfix|release)/[a-z0-9-]+$"
+  default_base: ""         # Auto-detected from remote if empty
+
+# --- PR/MR ---
+pr:
+  title:
+    convention: inherit    # inherit (from commit convention) | conventional | custom | freeform
+    custom_pattern: ""
+    max_length: 72
+  description:
+    template: |
+      ## Summary
+      <!-- Brief description of what this PR does -->
+
+      ## Changes
+      <!-- Bulleted list of changes, auto-populated from commits -->
+
+      ## Test plan
+      <!-- How were these changes tested? -->
+    required_sections:
+      - summary
+      - test_plan
+  auto_populate: true      # Auto-fill description from commit messages
+  draft: false             # Create PRs as draft by default
+  labels: []               # Static labels to always apply
+  auto_labels: true        # Assign labels based on changed file paths
+  label_rules:
+    - pattern: "src/api/**"
+      labels: [api, backend]
+    - pattern: "src/ui/**"
+      labels: [frontend, ui]
+    - pattern: "docs/**"
+      labels: [documentation]
+    - pattern: "*.test.*"
+      labels: [testing]
+    - pattern: "*.spec.*"
+      labels: [testing]
+  size_labels:
+    enabled: true
+    xs: 10                 # 0 to xs lines = size/XS
+    s: 50                  # xs to s = size/S
+    m: 200                 # s to m = size/M
+    l: 500                 # m to l = size/L
+    xl: 1000               # l to xl = size/XL, above = size/XXL
+  reviewers:
+    auto_assign: true
+    rules: []              # List of { pattern: "src/api/**", reviewers: ["@user"], required: 1 }
+    fallback: []           # Fallback reviewers when no rule matches
+  assignees: []
+  team_reviewers: []
+  target_branch: ""        # Override target branch (empty = repo default)
+  delete_branch_on_merge: true
+  merge_strategy: squash   # merge | squash | rebase
+
+# --- Review ---
+review:
+  adversarial: true        # Enable adversarial (devil's advocate) reviewer
+  security: true           # Enable security-focused review
+  performance: false       # Enable performance-focused review
+  checklist:
+    - "Code follows project conventions and style"
+    - "Error handling is appropriate and consistent"
+    - "No hardcoded secrets or credentials"
+    - "Tests adequately cover the changes"
+    - "Documentation is updated if needed"
+  security_patterns:
+    - pattern: "(password|secret|token|api_key)\\s*="
+      severity: high
+      message: "Possible hardcoded credential"
+    - pattern: "eval\\("
+      severity: medium
+      message: "Use of eval() detected"
+    - pattern: "innerHTML\\s*="
+      severity: medium
+      message: "Direct innerHTML assignment — potential XSS"
+    - pattern: "dangerouslySetInnerHTML"
+      severity: medium
+      message: "dangerouslySetInnerHTML usage — verify input is sanitized"
+  performance_patterns:
+    - pattern: "SELECT \\*"
+      message: "Avoid SELECT * in production queries"
+    - pattern: "\\.forEach\\("
+      message: "Consider for...of for large arrays (avoids closure overhead)"
+  confidence_threshold: 80 # Only report findings above this confidence (0-100)
+  max_files_per_review: 30 # Suggest splitting PR if above this
+  exclude_patterns:
+    - "*.lock"
+    - "*.min.js"
+    - "*.min.css"
+    - "*.generated.*"
+    - "package-lock.json"
+    - "yarn.lock"
+    - "pnpm-lock.yaml"
+  language_rules: {}       # Per-language rules, e.g. { python: ["Check type hints"] }
+  model: sonnet            # Model for standard review agents
+  adversarial_model: opus  # Model for adversarial reviewer (needs deep reasoning)
+
+# --- Pipeline/CI ---
+pipeline:
+  provider: auto           # auto | github_actions | gitlab_ci | none
+  auto_diagnose: true      # Automatically diagnose failures
+  auto_suggest_fix: true   # Suggest code fixes for failures
+  poll_interval: 30        # Seconds between status checks
+  max_wait: 600            # Max seconds to wait for pipeline
+  required_checks: []      # Checks that must pass (empty = all)
+  ignored_checks: []       # Checks to ignore (flaky, informational)
+  max_auto_fix_attempts: 3
+
+# --- Workflow ---
+workflow:
+  auto_stash: true         # Stash uncommitted changes before operations
+  auto_fetch: true         # Fetch remote before branch operations
+  rebase_on_pull: true     # Use rebase instead of merge when pulling
+  prune_on_fetch: true     # Prune deleted remote branches on fetch
+  default_remote: origin

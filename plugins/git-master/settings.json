@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(glab *)",
+      "Bash(tea *)",
+      "Bash(python3 *)",
+      "Bash(jq *)",
+      "Bash(cat *)"
+    ]
+  }
+}
