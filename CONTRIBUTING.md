@@ -25,6 +25,7 @@ claude-code-plugins/
 │       └── tag-release.yml      # GitHub release creation
 └── plugins/
     ├── claude-switcher/         # Account switching plugin
+    ├── git-master/              # Git workflow control plugin
     └── opaq/                    # Credential security plugin
 ```
 
