@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Productivity and security plugins for Claude Code",
-    "version": "1.1.13",
+    "version": "1.1.14",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -48,6 +48,30 @@
         "credentials"
       ],
       "category": "productivity"
+    },
+    {
+      "name": "git-master",
+      "source": "./plugins/git-master",
+      "description": "Comprehensive git workflow control: commit conventions, PR/MR automation, multi-provider support, adversarial code review, and CI/CD pipeline integration",
+      "version": "0.1.0",
+      "author": {
+        "name": "moukrea"
+      },
+      "homepage": "https://github.com/moukrea/claude-code-plugins",
+      "repository": "https://github.com/moukrea/claude-code-plugins",
+      "license": "MIT",
+      "keywords": [
+        "git",
+        "commit",
+        "pull-request",
+        "merge-request",
+        "code-review",
+        "ci-cd",
+        "github",
+        "gitlab",
+        "conventional-commits"
+      ],
+      "category": "developer-tools"
     }
   ]
 }
