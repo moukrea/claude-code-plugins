@@ -1,6 +1,6 @@
 {
   "name": "git-master",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Comprehensive git workflow control: commit conventions, PR/MR automation, multi-provider support, adversarial code review, and CI/CD pipeline integration",
   "author": {
     "name": "moukrea"
